@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Админ-панель</title>
+  
+  <!-- Preload критичных ресурсов -->
+  <link rel="preload" href="https://telegram.org/js/telegram-web-app.js" as="script">
+  <link rel="preload" href="https://unpkg.com/react@18/umd/react.production.min.js" as="script">
+  <link rel="preload" href="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" as="script">
+  
+  <!-- Preconnect к CDN -->
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://cdn.tailwindcss.com">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://yepbabnubbjzvdjnlfzw.supabase.co">
+  
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script defer crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script defer crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script defer src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Roboto',sans-serif}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const SUPABASE_URL = 'https://yepbabnubbjzvdjnlfzw.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllcGJhYm51YmJqenZkam5sZnp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2NzUyMjUsImV4cCI6MjA3NzI1MTIyNX0.0XGin1VyO8HmUZr2HuTGNKQqjJTKtFH6mHh75KGkvVs';
+    const API_URL = window.location.origin;
+    const ADMIN_ID = 8086901919;
+    
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const AdminPanel = () => {
+      const [activeTab, setActiveTab] = useState('products');
+      const [products, setProducts] = useState([]);
+      const [orders, setOrders] = useState([]);
+      const [banners, setBanners] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [editingProduct, setEditingProduct] = useState(null);
+      const [showProductForm, setShowProductForm] = useState(false);
+      const [editingBanner, setEditingBanner] = useState(null);
+      const [showBannerForm, setShowBannerForm] = useState(false);
+      const [productForm, setProductForm] = useState({
+        name: '', 
+        name_kk: '', 
+        description: '', 
+        description_kk: '',
+        price: '', 
+        category: '', 
+        category_kk: '',
+        image: ''
+      });
+      const [bannerForm, setBannerForm] = useState({
+        image_url: '',
+        title_ru: '',
+        title_kk: '',
+        description_ru: '',
+        description_kk: '',
+        link: '',
+        order_index: 0,
+        is_active: true
+      });
+      
+      const [settings, setSettings] = useState({
+        kaspi_phone: '',
+        kaspi_link: '',
+        shop_name: 'Наша Кондитерская',
+        shop_phone: '',
+        shop_logo: '',
+        payment_enabled: false
+      });
+      
+      const [orderFilter, setOrderFilter] = useState('all');
+      const [categoryFilter, setCategoryFilter] = useState('all');  // Фильтр категорий товаров
+
+      // Функция форматирования времени (UTC → Астана UTC+5)
+      const formatDateTime = (utcDate) => {
+        if (!utcDate) return '';
+        const date = new Date(utcDate);
+        return date.toLocaleString('ru-RU', {
+          timeZone: 'Asia/Almaty',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      };
+
+      useEffect(() => {
+        if (window.Telegram?.WebApp) {
+          const tg = window.Telegram.WebApp;
+          tg.ready();
+          tg.expand();
+        }
+        loadData();
+      }, []);
+
+      const loadData = async () => {
+        setLoading(true);
+        await loadProducts();
+        await loadOrders();
+        await loadBanners();
+        await loadSettings();
+        setLoading(false);
+      };
+
+      const loadBanners = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('banners')
+            .select('*')
+            .order('order_index', { ascending: true })
+            .limit(50);
+
+          if (error) throw error;
+          setBanners(data || []);
+        } catch (error) {
+          console.error('Ошибка загрузки баннеров:', error);
+        }
+      };
+
+      const loadSettings = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('settings')
+            .select('*')
+            .limit(1)
+            .single();
+
+          if (data) {
+            setSettings(data);
+          }
+        } catch (error) {
+          console.log('Настройки не найдены');
+        }
+      };
+
+      const saveSettings = async () => {
+        try {
+          console.log('🔧 Сохранение настроек...');
+          console.log('Текущие settings:', settings);
+          
+          const { data: existing } = await supabase
+            .from('settings')
+            .select('id')
+            .limit(1)
+            .single();
+
+          // Убираем системные поля перед сохранением
+          const { id, created_at, updated_at, ...settingsToSave } = settings;
+          
+          console.log('Сохраняем:', settingsToSave);
+
+          if (existing) {
+            console.log('Обновляем существующую запись, ID:', existing.id);
+            const { error } = await supabase
+              .from('settings')
+              .update(settingsToSave)
+              .eq('id', existing.id);
+            if (error) throw error;
+            console.log('✅ Обновлено успешно');
+          } else {
+            console.log('Создаём новую запись');
+            const { error } = await supabase
+              .from('settings')
+              .insert([settingsToSave]);
+            if (error) throw error;
+            console.log('✅ Создано успешно');
+          }
+          
+          alert('✅ Настройки сохранены!');
+          
+          // Перезагружаем настройки чтобы получить актуальные данные
+          await loadSettings();
+          console.log('✅ Настройки перезагружены');
+        } catch (error) {
+          console.error('❌ Ошибка сохранения настроек:', error);
+          alert(`❌ Ошибка сохранения настроек: ${error.message}`);
+        }
+      };
+
+      const loadProducts = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('products')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(200);
+
+          if (error) throw error;
+          setProducts(data || []);
+        } catch (error) {
+          console.error('Ошибка загрузки товаров:', error);
+        }
+      };
+
+      const loadOrders = async () => {
+        try {
+          console.time('⏱️ Загрузка заказов');
+          const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .order('date', { ascending: false})
+            .limit(50);  // Загружаем только 50 последних заказов!
+
+          if (error) throw error;
+          setOrders(data || []);
+          console.timeEnd('⏱️ Загрузка заказов');
+          console.log(`✅ Загружено заказов: ${data?.length || 0}`);
+        } catch (error) {
+          console.error('Ошибка загрузки заказов:', error);
+        }
+      };
+
+      const handleSaveProduct = async () => {
+        if (!productForm.name || !productForm.price || !productForm.category) {
+          alert('Заполните обязательные поля (RU): название, цена, категория');
+          return;
+        }
+        
+        const productData = {
+          name: productForm.name,
+          name_kk: productForm.name_kk || productForm.name,
+          description: productForm.description,
+          description_kk: productForm.description_kk || productForm.description,
+          price: parseFloat(productForm.price),
+          category: productForm.category,
+          category_kk: productForm.category_kk || productForm.category,
+          image: productForm.image || 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400'
+        };
+
+        try {
+          if (editingProduct) {
+            const { error } = await supabase
+              .from('products')
+              .update(productData)
+              .eq('id', editingProduct.id);
+            if (error) throw error;
+          } else {
+            const { error } = await supabase
+              .from('products')
+              .insert([productData]);
+            if (error) throw error;
+          }
+          
+          await loadProducts();
+          resetForm();
+        } catch (error) {
+          console.error('Ошибка сохранения товара:', error);
+          alert('Ошибка сохранения товара');
+        }
+      };
+
+      const handleDeleteProduct = async (id) => {
+        if (confirm('Удалить этот товар?')) {
+          try {
+            const { error } = await supabase
+              .from('products')
+              .delete()
+              .eq('id', id);
+            
+            if (error) throw error;
+            await loadProducts();
+          } catch (error) {
+            console.error('Ошибка удаления товара:', error);
+            alert('Ошибка удаления товара');
+          }
+        }
+      };
+
+      const toggleProductAvailability = async (productId, currentStatus) => {
+        try {
+          const { error } = await supabase
+            .from('products')
+            .update({ available: !currentStatus })
+            .eq('id', productId);
+          
+          if (error) throw error;
+          await loadProducts();
+        } catch (error) {
+          console.error('Ошибка изменения доступности:', error);
+          alert('Ошибка изменения доступности товара');
+        }
+      };
+
+      // Функции для работы с баннерами
+      const handleSaveBanner = async () => {
+        try {
+          const bannerData = {
+            ...bannerForm,
+            order_index: parseInt(bannerForm.order_index) || 0
+          };
+
+          if (editingBanner) {
+            const { error } = await supabase
+              .from('banners')
+              .update(bannerData)
+              .eq('id', editingBanner.id);
+            
+            if (error) throw error;
+          } else {
+            const { error } = await supabase
+              .from('banners')
+              .insert([bannerData]);
+            
+            if (error) throw error;
+          }
+          
+          await loadBanners();
+          setShowBannerForm(false);
+          setEditingBanner(null);
+          setBannerForm({
+            image_url: '',
+            title_ru: '',
+            title_kk: '',
+            description_ru: '',
+            description_kk: '',
+            link: '',
+            order_index: 0,
+            is_active: true
+          });
+        } catch (error) {
+          console.error('Ошибка сохранения баннера:', error);
+          alert('Ошибка сохранения баннера');
+        }
+      };
+
+      const handleDeleteBanner = async (id) => {
+        if (window.confirm('Удалить баннер?')) {
+          try {
+            const { error } = await supabase
+              .from('banners')
+              .delete()
+              .eq('id', id);
+            
+            if (error) throw error;
+            await loadBanners();
+          } catch (error) {
+            console.error('Ошибка удаления баннера:', error);
+            alert('Ошибка удаления баннера');
+          }
+        }
+      };
+
+      const handleEditBanner = (banner) => {
+        setEditingBanner(banner);
+        setBannerForm({
+          image_url: banner.image_url,
+          title_ru: banner.title_ru,
+          title_kk: banner.title_kk,
+          description_ru: banner.description_ru || '',
+          description_kk: banner.description_kk || '',
+          link: banner.link || '',
+          order_index: banner.order_index,
+          is_active: banner.is_active
+        });
+        setShowBannerForm(true);
+      };
+
+      const toggleBannerStatus = async (bannerId, currentStatus) => {
+        try {
+          const { error } = await supabase
+            .from('banners')
+            .update({ is_active: !currentStatus })
+            .eq('id', bannerId);
+          
+          if (error) throw error;
+          await loadBanners();
+        } catch (error) {
+          console.error('Ошибка изменения статуса:', error);
+          alert('Ошибка изменения статуса баннера');
+        }
+      };
+
+      const handleEditProduct = (product) => {
+        setEditingProduct(product);
+        setProductForm({
+          name: product.name,
+          name_kk: product.name_kk || '',
+          description: product.description,
+          description_kk: product.description_kk || '',
+          price: product.price.toString(),
+          category: product.category,
+          category_kk: product.category_kk || '',
+          image: product.image
+        });
+        setShowProductForm(true);
+      };
+
+      const resetForm = () => {
+        setProductForm({ 
+          name: '', 
+          name_kk: '', 
+          description: '', 
+          description_kk: '',
+          price: '', 
+          category: '', 
+          category_kk: '',
+          image: '' 
+        });
+        setEditingProduct(null);
+        setShowProductForm(false);
+      };
+
+      const sendStatusNotification = async (order, newStatus) => {
+        if (!order.telegram_user_id) return;
+
+        try {
+          await fetch(`${API_URL}/api/notify-status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: order.telegram_user_id,
+              status: newStatus,
+              orderNumber: order.id.slice(-6),
+              shopPhone: settings?.shop_phone || ''
+            })
+          });
+        } catch (error) {
+          console.error('Ошибка отправки уведомления клиенту:', error);
+        }
+      };
+
+      const updateOrderStatus = async (orderId, newStatus) => {
+        try {
+          const order = orders.find(o => o.id === orderId);
+          if (!order) return;
+
+          await loadSettings();
+
+          const { error } = await supabase
+            .from('orders')
+            .update({ status: newStatus })
+            .eq('id', orderId);
+
+          if (error) throw error;
+
+          await sendStatusNotification(order, newStatus);
+
+          setOrders(orders.map(o => 
+            o.id === orderId ? { ...o, status: newStatus } : o
+          ));
+
+          const statusText = {
+            'processing': 'в работу',
+            'completed': 'выполнен',
+            'cancelled': 'отменён'
+          };
+          
+          alert(`✅ Заказ переведён в статус "${statusText[newStatus]}"\n${order.telegram_user_id ? 'Клиенту отправлено уведомление 📱' : ''}`);
+
+        } catch (error) {
+          console.error('Ошибка обновления статуса:', error);
+          alert('Ошибка обновления статуса');
+        }
+      };
+
+      const getStatusColor = (status) => {
+        switch (status) {
+          case 'pending_payment': return 'bg-orange-100 text-orange-800';
+          case 'new': return 'bg-blue-100 text-blue-800';
+          case 'processing': return 'bg-yellow-100 text-yellow-800';
+          case 'completed': return 'bg-green-100 text-green-800';
+          case 'cancelled': return 'bg-red-100 text-red-800';
+          default: return 'bg-gray-100 text-gray-800';
+        }
+      };
+
+      const getStatusText = (status) => {
+        switch (status) {
+          case 'pending_payment': return 'Ожидает оплаты';
+          case 'new': return 'Новый';
+          case 'processing': return 'В работе';
+          case 'completed': return 'Выполнен';
+          case 'cancelled': return 'Отменён';
+          default: return status;
+        }
+      };
+
+      // Фильтрация заказов
+      const filteredOrders = orders.filter(order => {
+        if (orderFilter === 'all') return true;
+        return order.status === orderFilter;
+      });
+
+      // Подсчёт заказов по статусам
+      const orderCounts = {
+        all: orders.length,
+        pending_payment: orders.filter(o => o.status === 'pending_payment').length,
+        new: orders.filter(o => o.status === 'new').length,
+        processing: orders.filter(o => o.status === 'processing').length,
+        completed: orders.filter(o => o.status === 'completed').length,
+        cancelled: orders.filter(o => o.status === 'cancelled').length
+      };
+
+      if (loading) {
+        return (
+          <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-700 mx-auto"></div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen bg-gray-50 pb-20">
+          <div className="bg-white shadow-sm">
+            <div className="px-4 py-4">
+              <h1 className="text-xl font-bold text-gray-800">Админ-панель</h1>
+            </div>
+            <div className="flex border-t">
+              <button onClick={() => setActiveTab('products')} className={`flex-1 py-3 text-sm ${activeTab === 'products' ? 'border-b-2 border-gray-700 text-gray-700' : 'text-gray-500'}`}>
+                Товары
+              </button>
+              <button onClick={() => setActiveTab('banners')} className={`flex-1 py-3 text-sm ${activeTab === 'banners' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500'}`}>
+                🎨 Баннеры
+              </button>
+              <button onClick={() => setActiveTab('orders')} className={`flex-1 py-3 text-sm ${activeTab === 'orders' ? 'border-b-2 border-gray-700 text-gray-700' : 'text-gray-500'}`}>
+                Заказы ({orders.length})
+              </button>
+              <button onClick={() => setActiveTab('settings')} className={`flex-1 py-3 text-sm ${activeTab === 'settings' ? 'border-b-2 border-gray-700 text-gray-700' : 'text-gray-500'}`}>
+                ⚙️ Настройки
+              </button>
+            </div>
+          </div>
+
+          {activeTab === 'products' && (
+            <div className="p-4">
+              <button onClick={() => setShowProductForm(true)} className="w-full bg-gray-700 text-white py-3 rounded-lg font-medium mb-4">
+                + Добавить товар
+              </button>
+              
+              {/* Фильтр по категориям */}
+              <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                <button
+                  onClick={() => setCategoryFilter('all')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                    categoryFilter === 'all'
+                      ? 'bg-gray-700 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300'
+                  }`}
+                >
+                  Все
+                </button>
+                {[...new Set(products.map(p => p.category))].map(category => (
+                  <button
+                    key={category}
+                    onClick={() => setCategoryFilter(category)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                      categoryFilter === category
+                        ? 'bg-gray-700 text-white'
+                        : 'bg-white text-gray-700 border border-gray-300'
+                    }`}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+              
+              <div className="space-y-3">
+                {products.filter(p => categoryFilter === 'all' || p.category === categoryFilter).map(product => (
+                  <div key={product.id} className="bg-white rounded-lg p-4 shadow-sm">
+                    <div className="flex gap-3">
+                      <img src={product.image} alt={product.name} className="w-20 h-20 object-cover rounded-lg" loading="lazy" />
+                      <div className="flex-1">
+                        <h3 className="font-bold text-gray-800">{product.name}</h3>
+                        {product.name_kk && (
+                          <p className="text-sm text-gray-500">🇰🇿 {product.name_kk}</p>
+                        )}
+                        <p className="text-sm text-gray-600">{product.description}</p>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="font-bold text-gray-700">{product.price} ₸</span>
+                          <span className="text-xs bg-gray-100 px-2 py-1 rounded">{product.category}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <button
+                            onClick={() => toggleProductAvailability(product.id, product.available)}
+                            className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition ${
+                              product.available 
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                                : 'bg-red-100 text-red-700 hover:bg-red-200'
+                            }`}
+                          >
+                            {product.available ? '✅ В наличии' : '❌ Нет в наличии'}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <button onClick={() => handleEditProduct(product)} className="p-2 bg-blue-50 text-blue-600 rounded-lg">✏️</button>
+                        <button onClick={() => handleDeleteProduct(product.id)} className="p-2 bg-red-50 text-red-600 rounded-lg">🗑️</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Секция баннеров */}
+          {activeTab === 'banners' && (
+            <div className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">Управление баннерами</h2>
+                <button
+                  onClick={() => {
+                    setShowBannerForm(true);
+                    setEditingBanner(null);
+                    setBannerForm({
+                      image_url: '',
+                      title_ru: '',
+                      title_kk: '',
+                      description_ru: '',
+                      description_kk: '',
+                      link: '',
+                      order_index: banners.length,
+                      is_active: true
+                    });
+                  }}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+                >
+                  + Добавить баннер
+                </button>
+              </div>
+
+              {showBannerForm && (
+                <div className="bg-white rounded-lg p-4 shadow-sm mb-4">
+                  <h3 className="font-bold mb-3">
+                    {editingBanner ? 'Редактировать баннер' : 'Новый баннер'}
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm mb-1">URL картинки *</label>
+                      <input
+                        type="text"
+                        value={bannerForm.image_url}
+                        onChange={(e) => setBannerForm({...bannerForm, image_url: e.target.value})}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        placeholder="https://example.com/image.jpg"
+                      />
+                      {bannerForm.image_url && (
+                        <img src={bannerForm.image_url} alt="Preview" className="mt-2 h-32 w-full object-cover rounded-lg" />
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm mb-1">Заголовок (RU) *</label>
+                        <input
+                          type="text"
+                          value={bannerForm.title_ru}
+                          onChange={(e) => setBannerForm({...bannerForm, title_ru: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">Заголовок (KK) *</label>
+                        <input
+                          type="text"
+                          value={bannerForm.title_kk}
+                          onChange={(e) => setBannerForm({...bannerForm, title_kk: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm mb-1">Описание (RU)</label>
+                        <input
+                          type="text"
+                          value={bannerForm.description_ru}
+                          onChange={(e) => setBannerForm({...bannerForm, description_ru: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">Описание (KK)</label>
+                        <input
+                          type="text"
+                          value={bannerForm.description_kk}
+                          onChange={(e) => setBannerForm({...bannerForm, description_kk: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">Ссылка (опционально)</label>
+                      <input
+                        type="text"
+                        value={bannerForm.link}
+                        onChange={(e) => setBannerForm({...bannerForm, link: e.target.value})}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        placeholder="https://..."
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm mb-1">Порядок</label>
+                        <input
+                          type="number"
+                          value={bannerForm.order_index}
+                          onChange={(e) => setBannerForm({...bannerForm, order_index: e.target.value})}
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={bannerForm.is_active}
+                            onChange={(e) => setBannerForm({...bannerForm, is_active: e.target.checked})}
+                            className="w-5 h-5"
+                          />
+                          <span className="text-sm">Активен</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSaveBanner}
+                        className="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700"
+                      >
+                        Сохранить
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowBannerForm(false);
+                          setEditingBanner(null);
+                        }}
+                        className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300"
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {banners.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <p>Баннеров пока нет</p>
+                    <p className="text-sm mt-2">Добавьте первый баннер для карусели</p>
+                  </div>
+                ) : (
+                  banners.map(banner => (
+                    <div key={banner.id} className="bg-white rounded-lg p-4 shadow-sm">
+                      <div className="flex gap-4">
+                        <img
+                          src={banner.image_url}
+                          alt={banner.title_ru}
+                          className="w-32 h-20 object-cover rounded-lg flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-bold text-gray-800 truncate">{banner.title_ru}</h3>
+                              <p className="text-sm text-gray-600 truncate">{banner.title_kk}</p>
+                              {banner.description_ru && (
+                                <p className="text-xs text-gray-500 mt-1 truncate">{banner.description_ru}</p>
+                              )}
+                            </div>
+                            <div className="flex gap-2 flex-shrink-0">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                banner.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {banner.is_active ? '✓ Активен' : 'Отключен'}
+                              </span>
+                              <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs">
+                                #{banner.order_index}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 mt-3">
+                            <button
+                              onClick={() => handleEditBanner(banner)}
+                              className="text-sm text-indigo-600 hover:text-indigo-700"
+                            >
+                              Редактировать
+                            </button>
+                            <button
+                              onClick={() => toggleBannerStatus(banner.id, banner.is_active)}
+                              className="text-sm text-gray-600 hover:text-gray-700"
+                            >
+                              {banner.is_active ? 'Отключить' : 'Включить'}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteBanner(banner.id)}
+                              className="text-sm text-red-600 hover:text-red-700"
+                            >
+                              Удалить
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'orders' && (
+            <div className="p-4">
+              {/* Фильтры заказов */}
+              <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                <button
+                  onClick={() => setOrderFilter('all')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap flex items-center gap-2 transition ${
+                    orderFilter === 'all'
+                      ? 'bg-gray-700 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300'
+                  }`}
+                >
+                  Все
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+                    orderFilter === 'all' ? 'bg-white/20' : 'bg-gray-100'
+                  }`}>
+                    {orderCounts.all}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setOrderFilter('pending_payment')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap flex items-center gap-2 transition ${
+                    orderFilter === 'pending_payment'
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300'
+                  }`}
+                >
+                  ⏰ Ожидает оплаты
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+                    orderFilter === 'pending_payment' ? 'bg-white/20' : 'bg-gray-100'
+                  }`}>
+                    {orderCounts.pending_payment}
+                  </span>
+                </button>
+                
+                <button
+                  onClick={() => setOrderFilter('new')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap flex items-center gap-2 transition ${
+                    orderFilter === 'new'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300'
+                  }`}
+                >
+                  🆕 Новые
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+                    orderFilter === 'new' ? 'bg-white/20' : 'bg-gray-100'
+                  }`}>
+                    {orderCounts.new}
+                  </span>
+                </button>
+                
+                <button
+                  onClick={() => setOrderFilter('processing')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap flex items-center gap-2 transition ${
+                    orderFilter === 'processing'
+                      ? 'bg-yellow-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300'
+                  }`}
+                >
+                  ⏳ В работе
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+                    orderFilter === 'processing' ? 'bg-white/20' : 'bg-gray-100'
+                  }`}>
+                    {orderCounts.processing}
+                  </span>
+                </button>
+                
+                <button
+                  onClick={() => setOrderFilter('completed')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap flex items-center gap-2 transition ${
+                    orderFilter === 'completed'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300'
+                  }`}
+                >
+                  ✅ Выполнено
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+                    orderFilter === 'completed' ? 'bg-white/20' : 'bg-gray-100'
+                  }`}>
+                    {orderCounts.completed}
+                  </span>
+                </button>
+                
+                <button
+                  onClick={() => setOrderFilter('cancelled')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap flex items-center gap-2 transition ${
+                    orderFilter === 'cancelled'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300'
+                  }`}
+                >
+                  ❌ Отменено
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+                    orderFilter === 'cancelled' ? 'bg-white/20' : 'bg-gray-100'
+                  }`}>
+                    {orderCounts.cancelled}
+                  </span>
+                </button>
+              </div>
+
+              {filteredOrders.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-4xl mb-2">📦</p>
+                  <p className="text-gray-500">Заказов нет</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredOrders.map(order => (
+                    <div key={order.id} className="bg-white rounded-lg p-4 shadow-sm">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="font-bold text-gray-800">Заказ #{order.id.slice(-6)}</p>
+                          <p className="text-xs text-gray-500">{formatDateTime(order.date)}</p>
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(order.status)}`}>
+                          {getStatusText(order.status)}
+                        </span>
+                      </div>
+                      
+                      <div className="border-t pt-3 mb-3">
+                        <p className="text-sm font-medium text-gray-700 mb-1">Клиент:</p>
+                        <p className="text-sm text-gray-600">{order.customer_name}</p>
+                        <p className="text-sm text-gray-600">{order.customer_phone}</p>
+                        {order.telegram_username && (
+                          <p className="text-sm text-blue-600">@{order.telegram_username}</p>
+                        )}
+                        {order.customer_comment && (
+                          <p className="text-sm text-gray-600 mt-1 italic">{order.customer_comment}</p>
+                        )}
+                      </div>
+                      
+                      <div className="border-t pt-3 mb-3">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Товары:</p>
+                        {order.items.map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-sm mb-1">
+                            <span>{item.name} x{item.quantity}</span>
+                            <span className="font-medium">{item.price * item.quantity} ₸</span>
+                          </div>
+                        ))}
+                        <div className="border-t mt-2 pt-2 flex justify-between font-bold">
+                          <span>Итого:</span>
+                          <span className="text-gray-700">{order.total} ₸</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => updateOrderStatus(order.id, 'processing')}
+                          disabled={order.status === 'processing'}
+                          className={`flex-1 py-2 rounded text-xs font-medium ${
+                            order.status === 'processing' 
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100'
+                          }`}
+                        >
+                          ⏳ В работу
+                        </button>
+                        <button
+                          onClick={() => updateOrderStatus(order.id, 'completed')}
+                          disabled={order.status === 'completed'}
+                          className={`flex-1 py-2 rounded text-xs font-medium ${
+                            order.status === 'completed'
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : 'bg-green-50 text-green-700 hover:bg-green-100'
+                          }`}
+                        >
+                          ✅ Выполнен
+                        </button>
+                        <button
+                          onClick={() => updateOrderStatus(order.id, 'cancelled')}
+                          disabled={order.status === 'cancelled'}
+                          className={`flex-1 py-2 rounded text-xs font-medium ${
+                            order.status === 'cancelled'
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : 'bg-red-50 text-red-700 hover:bg-red-100'
+                          }`}
+                        >
+                          ❌ Отменить
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="p-4">
+              <div className="bg-white rounded-lg p-4 shadow-sm mb-4">
+                <h3 className="font-bold text-lg mb-4">⚙️ Настройки магазина</h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Логотип (URL изображения)</label>
+                    <input
+                      type="text"
+                      value={settings.shop_logo}
+                      onChange={(e) => setSettings({...settings, shop_logo: e.target.value})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      placeholder="https://..."
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Будет показан в шапке витрины. Рекомендуемый размер: 100x100px или 200x60px
+                    </p>
+                    {settings.shop_logo && (
+                      <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                        <p className="text-xs text-gray-600 mb-2">Предпросмотр:</p>
+                        <img 
+                          src={settings.shop_logo} 
+                          alt="Логотип" 
+                          className="h-12 object-contain"
+                          onError={(e) => e.target.style.display = 'none'}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <h4 className="font-bold text-md mb-3">💳 Настройки оплаты Kaspi</h4>
+                    
+                    <div className="mb-3">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={settings.payment_enabled}
+                          onChange={(e) => setSettings({...settings, payment_enabled: e.target.checked})}
+                          className="w-4 h-4"
+                        />
+                        <span className="text-sm">Включить отправку реквизитов для оплаты</span>
+                      </label>
+                    </div>
+
+                    {settings.payment_enabled && (
+                      <>
+                        <div className="mb-3">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Номер телефона Kaspi (без +7)
+                          </label>
+                          <input
+                            type="text"
+                            value={settings.kaspi_phone}
+                            onChange={(e) => setSettings({...settings, kaspi_phone: e.target.value})}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                            placeholder="7771234567"
+                          />
+                        </div>
+
+                        <div className="mb-3">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Ссылка на Kaspi (опционально)
+                          </label>
+                          <input
+                            type="text"
+                            value={settings.kaspi_link}
+                            onChange={(e) => setSettings({...settings, kaspi_link: e.target.value})}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                            placeholder="https://kaspi.kz/pay/..."
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={saveSettings}
+                    className="w-full bg-gray-700 text-white py-3 rounded-lg font-medium"
+                  >
+                    💾 Сохранить настройки
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showProductForm && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50">
+              <div className="bg-white w-full rounded-t-2xl p-4 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold">{editingProduct ? 'Редактировать товар' : 'Добавить товар'}</h2>
+                  <button onClick={resetForm} className="p-2 text-2xl">×</button>
+                </div>
+                
+                <div className="bg-blue-50 p-3 rounded-lg mb-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>💡 Мультиязычность:</strong><br/>
+                    Заполните поля на русском (обязательно) и казахском (опционально). Если казахский не заполнен, будет использоваться русский текст.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="font-bold mb-3 text-gray-700">🇷🇺 Русский (обязательно)</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Название *</label>
+                        <input 
+                          type="text" 
+                          value={productForm.name} 
+                          onChange={(e) => setProductForm({...productForm, name: e.target.value})} 
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg" 
+                          placeholder="Торт Наполеон" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                        <textarea 
+                          value={productForm.description} 
+                          onChange={(e) => setProductForm({...productForm, description: e.target.value})} 
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg" 
+                          rows="2" 
+                          placeholder="Классический торт с заварным кремом" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Категория *</label>
+                        <input 
+                          type="text" 
+                          value={productForm.category} 
+                          onChange={(e) => setProductForm({...productForm, category: e.target.value})} 
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg" 
+                          placeholder="Торты" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="font-bold mb-3 text-gray-700">🇰🇿 Қазақша (опционально)</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Атауы</label>
+                        <input 
+                          type="text" 
+                          value={productForm.name_kk} 
+                          onChange={(e) => setProductForm({...productForm, name_kk: e.target.value})} 
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg" 
+                          placeholder="Наполеон торты" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Сипаттама</label>
+                        <textarea 
+                          value={productForm.description_kk} 
+                          onChange={(e) => setProductForm({...productForm, description_kk: e.target.value})} 
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg" 
+                          rows="2" 
+                          placeholder="Кілегей кремді классикалық торт" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Санат</label>
+                        <input 
+                          type="text" 
+                          value={productForm.category_kk} 
+                          onChange={(e) => setProductForm({...productForm, category_kk: e.target.value})} 
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg" 
+                          placeholder="Торттар" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Цена (₸) *</label>
+                    <input 
+                      type="number" 
+                      value={productForm.price} 
+                      onChange={(e) => setProductForm({...productForm, price: e.target.value})} 
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg" 
+                      placeholder="2500" 
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">URL изображения</label>
+                    <input 
+                      type="text" 
+                      value={productForm.image} 
+                      onChange={(e) => setProductForm({...productForm, image: e.target.value})} 
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg" 
+                      placeholder="https://..." 
+                    />
+                  </div>
+                  
+                  <button 
+                    onClick={handleSaveProduct} 
+                    className="w-full bg-gray-700 text-white py-3 rounded-lg font-medium"
+                  >
+                    💾 Сохранить
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    ReactDOM.render(<AdminPanel />, document.getElementById('root'));
+  </script>
+</body>
+</html>
