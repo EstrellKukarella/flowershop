@@ -664,127 +664,170 @@
         // Сервер сам отправит реквизиты если payment_enabled
       };
 
-      const submitOrder = async () => {
-        // Защита от двойного нажатия
-        if (submitting) return;
-        
+            const submitOrder = async () => {
         if (!orderForm.name || !orderForm.phone) {
-          alert(t.fillRequired);
+          showToast(t.fillRequired, 'error');
           return;
         }
         
-        // Проверяем что номер полный (11 цифр)
-        const phoneDigits = orderForm.phone.replace(/\D/g, '');
-        if (phoneDigits.length !== 11) {
-          alert(lang === 'ru' 
-            ? '⚠️ Введите полный номер телефона (10 цифр после +7)' 
-            : '⚠️ Толық телефон нөмірін енгізіңіз (+7 кейін 10 сан)'
-          );
-          return;
-        }
-
-        setSubmitting(true); // Блокируем кнопку
-
-        const order = {
-          id: Date.now().toString(),
-          date: new Date().toISOString(),
-          customer_name: orderForm.name,
-          customer_phone: orderForm.phone,
-          customer_comment: orderForm.comment,
-          telegram_user_id: telegramUser?.id || null,
-          telegram_username: telegramUser?.username || null,
-          telegram_first_name: telegramUser?.first_name || null,
-          telegram_last_name: telegramUser?.last_name || null,
-          items: cart,
-          total: getTotalPrice(),
-          status: settings?.payment_enabled ? 'pending_payment' : 'new'
-        };
-
+        if (submitting) return;
+        setSubmitting(true);
+        
         try {
-          const { error } = await supabase
-            .from('orders')
-            .insert([order]);
-
-          if (error) throw error;
+          // 💰 РАСЧЁТ КЭШБЕКА
+          const cartTotal = getTotalPrice();
+          const availableCashback = customer?.cashback_balance || 0;
+          const maxCashbackUsage = cartTotal * 0.5; // 50% макс
+          const cashbackUsed = useCashback ? Math.min(availableCashback, maxCashbackUsage) : 0;
+          const finalAmount = cartTotal - cashbackUsed;
+          const cashbackEarned = finalAmount * 0.05; // 5% от финальной суммы
           
-          // === СОХРАНЯЕМ/ОБНОВЛЯЕМ КЛИЕНТА ===
-          if (telegramUser?.id) {
-            try {
-              // Проверяем существует ли клиент
-              const { data: existingCustomer } = await supabase
-                .from('customers')
-                .select('*')
-                .eq('telegram_user_id', telegramUser.id)
-                .single();
+          const orderData = {
+            items: cart.map(item => ({
+              id: item.id,
+              name: item.name,
+              price: item.price,
+              quantity: item.quantity,
+              image: item.image
+            })),
+            total: cartTotal,
+            customer_name: orderForm.name,
+            customer_phone: orderForm.phone,
+            comment: orderForm.comment,
+            telegram_user_id: telegramUser?.id,
+            
+            // 💰 КЭШБЕК ДАННЫЕ
+            customer_id: customer?.id,
+            cashback_used: cashbackUsed,
+            cashback_earned: cashbackEarned,
+            final_amount: finalAmount
+          };
 
-              if (existingCustomer) {
-                // Клиент есть - обновляем данные
-                await supabase
-                  .from('customers')
-                  .update({
-                    phone: orderForm.phone,
-                    telegram_username: telegramUser.username,
-                    telegram_first_name: telegramUser.first_name,
-                    telegram_last_name: telegramUser.last_name,
-                    updated_at: new Date().toISOString(),
-                    total_orders: existingCustomer.total_orders + 1,
-                    total_spent: existingCustomer.total_spent + getTotalPrice(),
-                    last_order_date: new Date().toISOString()
-                  })
-                  .eq('telegram_user_id', telegramUser.id);
-              } else {
-                // Новый клиент - создаём запись
-                await supabase
-                  .from('customers')
-                  .insert([{
-                    telegram_user_id: telegramUser.id,
-                    telegram_username: telegramUser.username,
-                    telegram_first_name: telegramUser.first_name,
-                    telegram_last_name: telegramUser.last_name,
-                    phone: orderForm.phone,
-                    total_orders: 1,
-                    total_spent: getTotalPrice(),
-                    last_order_date: new Date().toISOString()
-                  }]);
+          // Отправка на сервер (если есть API)
+          if (API_URL && API_URL !== window.location.origin) {
+            const response = await fetch(`${API_URL}/api/submit-order`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(orderData)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+              // 💰 Обновляем баланс клиента из ответа сервера
+              if (result.cashback && customer) {
+                setCustomer(prev => ({
+                  ...prev,
+                  cashback_balance: result.cashback.newBalance,
+                  orders_count: (prev.orders_count || 0) + 1,
+                  total_earned: (prev.total_earned || 0) + cashbackEarned,
+                  total_spent: (prev.total_spent || 0) + cartTotal
+                }));
               }
-            } catch (customerError) {
-              console.error('Ошибка сохранения клиента:', customerError);
-              // Не прерываем процесс - заказ уже создан
+            }
+          } else {
+            // Сохранение напрямую в Supabase (если нет backend)
+            const { data: order, error: orderError } = await supabase
+              .from('flowers_orders')
+              .insert([{
+                ...orderData,
+                status: 'pending',
+                date: new Date().toISOString()
+              }])
+              .select()
+              .single();
+            
+            if (orderError) throw orderError;
+            
+            // 💰 Обновляем баланс клиента в БД
+            if (customer) {
+              const newBalance = customer.cashback_balance - cashbackUsed + cashbackEarned;
+              
+              await supabase
+                .from('flowers_customers')
+                .update({
+                  cashback_balance: newBalance,
+                  total_earned: (customer.total_earned || 0) + cashbackEarned,
+                  total_spent: (customer.total_spent || 0) + cartTotal,
+                  orders_count: (customer.orders_count || 0) + 1,
+                  last_order_at: new Date().toISOString(),
+                  phone: orderForm.phone
+                })
+                .eq('id', customer.id);
+              
+              // 💰 Записываем транзакции кэшбека
+              const transactions = [];
+              
+              if (cashbackUsed > 0) {
+                transactions.push({
+                  customer_id: customer.id,
+                  order_id: order.id,
+                  type: 'spent',
+                  amount: -cashbackUsed,
+                  balance_after: customer.cashback_balance - cashbackUsed,
+                  description: `${lang === 'kk' ? 'Тапсырыста пайдаланылды' : 'Использован в заказе'} #${order.id.slice(-6)}`
+                });
+              }
+              
+              if (cashbackEarned > 0) {
+                transactions.push({
+                  customer_id: customer.id,
+                  order_id: order.id,
+                  type: 'earned',
+                  amount: cashbackEarned,
+                  balance_after: newBalance,
+                  description: `${lang === 'kk' ? 'Тапсырыс үшін есептелді' : 'Начислен за заказ'} #${order.id.slice(-6)}`
+                });
+              }
+              
+              if (transactions.length > 0) {
+                await supabase
+                  .from('flowers_cashback_transactions')
+                  .insert(transactions);
+              }
+              
+              // Обновляем состояние клиента
+              setCustomer(prev => ({
+                ...prev,
+                cashback_balance: newBalance,
+                orders_count: (prev.orders_count || 0) + 1,
+                total_earned: (prev.total_earned || 0) + cashbackEarned,
+                total_spent: (prev.total_spent || 0) + cartTotal,
+                phone: orderForm.phone
+              }));
             }
           }
-          // === КОНЕЦ СОХРАНЕНИЯ КЛИЕНТА ===
           
-          await sendTelegramNotification(order);
-          await sendPaymentInfo(order);
-
+          // Очистка корзины и формы
           setCart([]);
-          setOrderForm({ ...orderForm, comment: '' });
+          setOrderForm({ name: orderForm.name, phone: orderForm.phone, comment: '' });
+          setUseCashback(false);
           setView('catalog');
-          await loadMyOrders();
           
-          // Toast с деталями заказа
-          const orderDetails = order.items.map(item => `${item.name} x${item.quantity} - ${item.price * item.quantity}₸`).join('\n');
+          // 💰 Сообщение с кэшбеком
+          let successMessage = t.orderSuccess;
+          if (cashbackEarned > 0) {
+            successMessage += `\n\n🎁 ${lang === 'kk' ? 'Сізге' : 'Вам начислено'} ${cashbackEarned.toFixed(0)}₸ ${lang === 'kk' ? 'кэшбек есептелді!' : 'кэшбека!'}`;
+          }
+          if (cashbackUsed > 0) {
+            successMessage += `\n💰 ${lang === 'kk' ? 'Кэшбек пайдаланылды:' : 'Использовано кэшбека:'} ${cashbackUsed.toFixed(0)}₸`;
+          }
           
-          setToast({
-            message: lang === 'ru' 
-              ? `Заказ #${order.id.slice(-6)} оформлен!\n\n${orderDetails}\n\nИтого: ${order.total}₸\n\n📱 Реквизиты для оплаты отправлены в чат` 
-              : `Тапсырыс #${order.id.slice(-6)} жасалды!\n\n${orderDetails}\n\nБарлығы: ${order.total}₸\n\n📱 Төлем деректемелері чатқа жіберілді`,
-            type: 'success'
-          });
-          setTimeout(() => setToast(null), 8000);
+          showToast(successMessage, 'success');
+          
+          if (settings?.payment_enabled) {
+            setTimeout(() => {
+              showToast(t.paymentInfo, 'info');
+            }, 2000);
+          }
           
         } catch (error) {
-          console.error('Ошибка при отправке заказа:', error);
-          setToast({
-            message: lang === 'ru' ? 'Ошибка при отправке заказа' : 'Тапсырысты жіберу қатесі',
-            type: 'error'
-          });
-          setTimeout(() => setToast(null), 3000);
+          console.error('Ошибка отправки заказа:', error);
+          showToast(lang === 'kk' ? 'Қате орын алды' : 'Произошла ошибка', 'error');
         } finally {
-          setSubmitting(false); // Разблокируем кнопку в любом случае
+          setSubmitting(false);
         }
       };
-
       const getStatusText = (status) => {
         const colors = {
           new: 'bg-blue-100 text-blue-800',
