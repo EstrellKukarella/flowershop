@@ -840,6 +840,197 @@
 
       return (
         <div className="min-h-screen bg-gray-50">
+                    {/* 💰 ПРОФИЛЬ КЛИЕНТА */}
+          {showProfile && (
+            <div className="pb-20">
+              {/* Шапка */}
+              <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center z-10 shadow-sm">
+                <button 
+                  onClick={() => setShowProfile(false)}
+                  className="mr-3 p-2 hover:bg-gray-100 rounded-full transition"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <h2 className="text-xl font-bold">{lang === 'kk' ? 'Менің профилім' : 'Мой профиль'}</h2>
+              </div>
+              
+              <div className="p-4 space-y-4">
+                {!customer ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-300 mx-auto mb-4"></div>
+                    <p className="text-gray-500">{lang === 'kk' ? 'Жүктелуде...' : 'Загрузка...'}</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Карточка с балансом */}
+                    <div className="bg-gradient-to-br from-pink-500 to-green-500 text-white p-6 rounded-2xl shadow-lg">
+                      <div className="text-sm opacity-90">
+                        {lang === 'kk' ? 'Кэшбек балансы' : 'Баланс кэшбека'}
+                      </div>
+                      <div className="text-5xl font-bold mt-2">
+                        {(customer.cashback_balance || 0).toFixed(0)} ₸
+                      </div>
+                      <div className="text-sm mt-3 opacity-90">
+                        {lang === 'kk' 
+                          ? 'Келесі тапсырыста пайдалануға болады'
+                          : 'Можно использовать в следующем заказе'
+                        }
+                      </div>
+                    </div>
+                    
+                    {/* Статистика */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-pink-50 p-4 rounded-xl border border-pink-100">
+                        <div className="text-sm text-gray-600 mb-1">
+                          {lang === 'kk' ? 'Барлық тапсырыстар' : 'Всего заказов'}
+                        </div>
+                        <div className="text-3xl font-bold text-pink-600">
+                          {customer.orders_count || 0}
+                        </div>
+                      </div>
+                      
+                      <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                        <div className="text-sm text-gray-600 mb-1">
+                          {lang === 'kk' ? 'Барлық кэшбек' : 'Всего кэшбека'}
+                        </div>
+                        <div className="text-3xl font-bold text-green-600">
+                          {(customer.total_earned || 0).toFixed(0)}₸
+                        </div>
+                      </div>
+                      
+                      <div className="bg-gray-50 p-4 rounded-xl col-span-2 border border-gray-100">
+                        <div className="text-sm text-gray-600 mb-1">
+                          {lang === 'kk' ? 'Барлығы жұмсалды' : 'Потрачено всего'}
+                        </div>
+                        <div className="text-3xl font-bold text-gray-700">
+                          {(customer.total_spent || 0).toFixed(0)} ₸
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Как работает кэшбек */}
+                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                      <h3 className="font-bold mb-3 flex items-center text-gray-800">
+                        <span className="text-2xl mr-2">💡</span>
+                        {lang === 'kk' ? 'Кэшбек қалай жұмыс істейді?' : 'Как работает кэшбек?'}
+                      </h3>
+                      <ul className="space-y-2 text-sm text-gray-700">
+                        <li className="flex items-start">
+                          <span className="text-green-500 mr-2 mt-0.5 font-bold">✓</span>
+                          <span>
+                            {lang === 'kk' 
+                              ? 'Әр сатып алудан 5% алыңыз'
+                              : 'Получайте 5% с каждой покупки'
+                            }
+                          </span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="text-green-500 mr-2 mt-0.5 font-bold">✓</span>
+                          <span>
+                            {lang === 'kk'
+                              ? 'Тапсырыс сомасының 50%-на дейін пайдаланыңыз'
+                              : 'Используйте до 50% от суммы заказа'
+                            }
+                          </span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="text-green-500 mr-2 mt-0.5 font-bold">✓</span>
+                          <span>
+                            {lang === 'kk'
+                              ? 'Жинаңыз және үнемдеңіз!'
+                              : 'Накапливайте и экономьте!'
+                            }
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+                    
+                    {/* История транзакций */}
+                    {cashbackTransactions.length > 0 && (
+                      <div className="bg-white rounded-xl border shadow-sm">
+                        <h3 className="font-bold p-4 border-b text-gray-800">
+                          {lang === 'kk' ? 'Кэшбек тарихы' : 'История кэшбека'}
+                        </h3>
+                        <div className="divide-y">
+                          {cashbackTransactions.map(tx => (
+                            <div key={tx.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition">
+                              <div className="flex-1">
+                                <div className="font-medium text-sm text-gray-800">
+                                  {tx.type === 'earned' 
+                                    ? (lang === 'kk' ? '🎁 Есептелді' : '🎁 Начислено')
+                                    : (lang === 'kk' ? '💸 Пайдаланылды' : '💸 Использовано')
+                                  }
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {new Date(tx.created_at).toLocaleDateString(lang === 'kk' ? 'kk-KZ' : 'ru-RU', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </div>
+                                {tx.description && (
+                                  <div className="text-xs text-gray-400 mt-0.5">
+                                    {tx.description}
+                                  </div>
+                                )}
+                              </div>
+                              <div className={`text-lg font-bold ${
+                                tx.type === 'earned' ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {tx.type === 'earned' ? '+' : '-'}{Math.abs(tx.amount).toFixed(0)} ₸
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Информация о клиенте */}
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                      <h3 className="font-bold mb-3 text-gray-800">
+                        {lang === 'kk' ? 'Жеке деректер' : 'Личные данные'}
+                      </h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">{lang === 'kk' ? 'Аты:' : 'Имя:'}</span>
+                          <span className="font-medium text-gray-800">
+                            {customer.first_name} {customer.last_name || ''}
+                          </span>
+                        </div>
+                        {customer.phone && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">{lang === 'kk' ? 'Телефон:' : 'Телефон:'}</span>
+                            <span className="font-medium text-gray-800">{customer.phone}</span>
+                          </div>
+                        )}
+                        {customer.username && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Telegram:</span>
+                            <span className="font-medium text-gray-800">@{customer.username}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center pt-2 border-t">
+                          <span className="text-gray-600">
+                            {lang === 'kk' ? 'Тіркелу күні:' : 'Дата регистрации:'}
+                          </span>
+                          <span className="font-medium text-gray-800">
+                            {new Date(customer.created_at).toLocaleDateString(lang === 'kk' ? 'kk-KZ' : 'ru-RU', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
           {view === 'catalog' && (
             <div className="pb-20">
               <div className="bg-white shadow-sm">
