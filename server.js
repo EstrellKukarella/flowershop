@@ -19,7 +19,7 @@ const BOT_USERNAME = process.env.BOT_USERNAME || '';
 const ADMIN_ID = parseInt(process.env.ADMIN_ID); // Преобразуем в число!
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
-const PROJECT_TYPE = process.env.PROJECT_TYPE || 'bakery'; // 'bakery' или 'flowers'
+const PROJECT_TYPE = process.env.PROJECT_TYPE || 'flowers'; // 'bakery' или 'flowers'
 
 // 🎯 Функция для получения правильных имён таблиц
 const getTableName = (baseName) => {
