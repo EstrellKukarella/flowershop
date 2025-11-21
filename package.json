@@ -1,7 +1,7 @@
 {
-  "name": "bakery-telegram-miniapp",
+  "name": "flowershop",
   "version": "1.0.0",
-  "description": "Telegram Mini App для кондитерской с безопасным бэкендом",
+  "description": "Telegram Mini App для цветочного с безопасным бэкендом",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
