@@ -29,7 +29,7 @@ const getTableName = (baseName) => {
   return baseName; // для bakery используем без префикса
 };
 
-console.log(`🚀 Запуск сервера для проекта: ${flowers}`);
+console.log(`🚀 Запуск сервера для проекта: ${PROJECT_TYPE}`);
 console.log(`📊 Таблицы: ${getTableName('orders')}, ${getTableName('customers')}, ${getTableName('settings')}`);
 
 // URL Mini App
