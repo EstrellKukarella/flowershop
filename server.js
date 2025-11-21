@@ -15,13 +15,26 @@ app.use(express.static('public'));
 
 // Переменные окружения
 const BOT_TOKEN = process.env.BOT_TOKEN;
+const BOT_USERNAME = process.env.BOT_USERNAME || '';
 const ADMIN_ID = parseInt(process.env.ADMIN_ID); // Преобразуем в число!
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const PROJECT_TYPE = process.env.PROJECT_TYPE || 'bakery'; // 'bakery' или 'flowers'
+
+// 🎯 Функция для получения правильных имён таблиц
+const getTableName = (baseName) => {
+  if (PROJECT_TYPE === 'flowers') {
+    return `flowers_${baseName}`;
+  }
+  return baseName; // для bakery используем без префикса
+};
+
+console.log(`🚀 Запуск сервера для проекта: ${flowers}`);
+console.log(`📊 Таблицы: ${getTableName('orders')}, ${getTableName('customers')}, ${getTableName('settings')}`);
 
 // URL Mini App
-const CLIENT_APP_URL = "https://flowershop-6jdk.onrender.com";
-const ADMIN_APP_URL = "https://flowershop-6jdk.onrender.com/admin.html";
+const CLIENT_APP_URL = "https://telegram-miniapp-fd6b.onrender.com";
+const ADMIN_APP_URL = "https://telegram-miniapp-fd6b.onrender.com/admin.html";
 
 // Проверка конфигурации
 if (!BOT_TOKEN || !ADMIN_ID || !SUPABASE_URL || !SUPABASE_KEY) {
@@ -363,7 +376,7 @@ Mini App ашып, жаңа пісірілген өнімдерді есігің
       if (text === '/stats' && userId === ADMIN_ID) {
         try {
           const { data: orders } = await supabase
-            .from('orders')
+            .from(getTableName('orders'))
             .select('*');
 
           const total = orders.length;
@@ -397,11 +410,11 @@ Mini App ашып, жаңа пісірілген өнімдерді есігің
       if (text === '/detailed_stats' && userId === ADMIN_ID) {
         try {
           const { data: orders } = await supabase
-            .from('orders')
+            .from(getTableName('orders'))
             .select('*');
 
           const { data: products } = await supabase
-            .from('products')
+            .from(getTableName('products'))
             .select('*');
 
           // === БАЗОВЫЕ МЕТРИКИ ===
@@ -510,7 +523,7 @@ Mini App ашып, жаңа пісірілген өнімдерді есігің
       if (text === '/customers' && userId === ADMIN_ID) {
         try {
           const { data: customers } = await supabase
-            .from('customers')
+            .from(getTableName('customers'))
             .select('*')
             .order('total_spent', { ascending: false })
             .limit(20);
@@ -543,7 +556,7 @@ Mini App ашып, жаңа пісірілген өнімдерді есігің
           });
 
           const { data: allCustomers } = await supabase
-            .from('customers')
+            .from(getTableName('customers'))
             .select('id', { count: 'exact', head: true });
 
           customersText += `<i>Всего клиентов в базе: ${customers.length}</i>`;
@@ -585,7 +598,7 @@ Mini App ашып, жаңа пісірілген өнімдерді есігің
 
         try {
           const { data: orders } = await supabase
-            .from('orders')
+            .from(getTableName('orders'))
             .select('telegram_user_id');
 
           if (!orders || orders.length === 0) {
@@ -664,7 +677,7 @@ Mini App ашып, жаңа пісірілген өнімдерді есігің
 
         try {
           const { data: orders } = await supabase
-            .from('orders')
+            .from(getTableName('orders'))
             .select('telegram_user_id');
 
           const userIds = [...new Set(orders.map(o => o.telegram_user_id).filter(Boolean))];
@@ -721,14 +734,14 @@ Mini App ашып, жаңа пісірілген өнімдерді есігің
 
         // Получаем полную информацию о заказе
         const { data: order } = await supabase
-          .from('orders')
+          .from(getTableName('orders'))
           .select('*')
           .eq('id', orderId)
           .single();
 
         // Обновляем заказ
         await supabase
-          .from('orders')
+          .from(getTableName('orders'))
           .update({ 
             receipt_photo: photoUrl,
             status: 'pending_payment'
@@ -810,13 +823,13 @@ Mini App ашып, жаңа пісірілген өнімдерді есігің
         
         // Меняем статус в БД на processing
         await supabase
-          .from('orders')
+          .from(getTableName('orders'))
           .update({ status: 'processing' })
           .eq('id', orderId);
 
         // Получаем данные заказа
         const { data: order } = await supabase
-          .from('orders')
+          .from(getTableName('orders'))
           .select('*')
           .eq('id', orderId)
           .single();
@@ -851,7 +864,7 @@ Mini App ашып, жаңа пісірілген өнімдерді есігің
         
         // Получаем данные заказа
         const { data: order } = await supabase
-          .from('orders')
+          .from(getTableName('orders'))
           .select('*')
           .eq('id', orderId)
           .single();
@@ -1024,6 +1037,22 @@ async function setupWebhookOnStartup() {
     console.error(`❌ Ошибка при установке webhook:`, error.message);
   }
 }
+
+// 🏥 Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    project: PROJECT_TYPE,
+    tables: {
+      orders: getTableName('orders'),
+      customers: getTableName('customers'),
+      products: getTableName('products'),
+      settings: getTableName('settings')
+    },
+    botConfigured: !!BOT_TOKEN,
+    supabaseConfigured: !!SUPABASE_URL
+  });
+});
 
 // Запуск сервера
 app.listen(PORT, async () => {
