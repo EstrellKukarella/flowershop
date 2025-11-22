@@ -73,7 +73,7 @@
       const [settings, setSettings] = useState({
         kaspi_phone: '',
         kaspi_link: '',
-        shop_name: 'Наша Цветочная лавка',
+        shop_name: 'Наша Кондитерская',
         shop_phone: '',
         shop_logo: '',
         payment_enabled: false
@@ -132,7 +132,7 @@
       const loadSettings = async () => {
         try {
           const { data, error } = await supabase
-            .from('settings')
+            .from('flowers_settings')
             .select('*')
             .limit(1)
             .single();
@@ -151,7 +151,7 @@
           console.log('Текущие settings:', settings);
           
           const { data: existing } = await supabase
-            .from('settings')
+            .from('flowers_settings')
             .select('id')
             .limit(1)
             .single();
@@ -164,7 +164,7 @@
           if (existing) {
             console.log('Обновляем существующую запись, ID:', existing.id);
             const { error } = await supabase
-              .from('settings')
+              .from('flowers_settings')
               .update(settingsToSave)
               .eq('id', existing.id);
             if (error) throw error;
@@ -172,7 +172,7 @@
           } else {
             console.log('Создаём новую запись');
             const { error } = await supabase
-              .from('settings')
+              .from('flowers_settings')
               .insert([settingsToSave]);
             if (error) throw error;
             console.log('✅ Создано успешно');
@@ -192,7 +192,7 @@
       const loadProducts = async () => {
         try {
           const { data, error } = await supabase
-            .from('products')
+            .from('flowers_products')
             .select('*')
             .order('created_at', { ascending: false })
             .limit(200);
@@ -208,7 +208,7 @@
         try {
           console.time('⏱️ Загрузка заказов');
           const { data, error } = await supabase
-            .from('orders')
+            .from('flowers_orders')
             .select('*')
             .order('date', { ascending: false})
             .limit(50);  // Загружаем только 50 последних заказов!
@@ -242,13 +242,13 @@
         try {
           if (editingProduct) {
             const { error } = await supabase
-              .from('products')
+              .from('flowers_products')
               .update(productData)
               .eq('id', editingProduct.id);
             if (error) throw error;
           } else {
             const { error } = await supabase
-              .from('products')
+              .from('flowers_products')
               .insert([productData]);
             if (error) throw error;
           }
@@ -265,7 +265,7 @@
         if (confirm('Удалить этот товар?')) {
           try {
             const { error } = await supabase
-              .from('products')
+              .from('flowers_products')
               .delete()
               .eq('id', id);
             
@@ -281,7 +281,7 @@
       const toggleProductAvailability = async (productId, currentStatus) => {
         try {
           const { error } = await supabase
-            .from('products')
+            .from('flowers_products')
             .update({ available: !currentStatus })
             .eq('id', productId);
           
@@ -439,7 +439,7 @@
           await loadSettings();
 
           const { error } = await supabase
-            .from('orders')
+            .from('flowers_orders')
             .update({ status: newStatus })
             .eq('id', orderId);
 
@@ -1129,7 +1129,7 @@
                           value={productForm.category} 
                           onChange={(e) => setProductForm({...productForm, category: e.target.value})} 
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg" 
-                          placeholder="Букеты" 
+                          placeholder="Торты" 
                         />
                       </div>
                     </div>
@@ -1145,7 +1145,7 @@
                           value={productForm.name_kk} 
                           onChange={(e) => setProductForm({...productForm, name_kk: e.target.value})} 
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg" 
-                          placeholder="Наполеон букеты" 
+                          placeholder="Наполеон торты" 
                         />
                       </div>
                       <div>
