@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Цветочная лавка</title>
+  <title>Цветочная</title>
   
   <!-- Preload критичных ресурсов -->
   <link rel="preload" href="https://telegram.org/js/telegram-web-app.js" as="script">
@@ -232,19 +232,12 @@
           completed: "Выполнен",
           cancelled: "Отменён"
         },
-        // 💰 Кэшбек
         cashback: "Кэшбек",
         myCashback: "Мой кэшбек",
         balance: "Баланс",
         useCashback: "Использовать кэшбек",
-        cashbackUsed: "Использовано кэшбека",
-        cashbackEarned: "Начислено кэшбека",
-        youWillEarn: "Вы получите",
         available: "Доступно",
-        history: "История",
-        earned: "Начислено",
-        spent: "Потрачено",
-        order: "Заказ"
+        youWillEarn: "Вы получите"
       },
       kk: {
         shopTitle: "Біздің кондитерлік",
@@ -277,19 +270,12 @@
           completed: "Орындалды",
           cancelled: "Жойылды"
         },
-        // 💰 Кэшбек
         cashback: "Кэшбек",
         myCashback: "Менің кэшбегім",
         balance: "Баланс",
         useCashback: "Кэшбек пайдалану",
-        cashbackUsed: "Кэшбек қолданылды",
-        cashbackEarned: "Кэшбек есептелді",
-        youWillEarn: "Сіз аласыз",
         available: "Қолжетімді",
-        history: "Тарих",
-        earned: "Есептелді",
-        spent: "Жұмсалды",
-        order: "Тапсырыс"
+        youWillEarn: "Сіз аласыз"
       }
     };
 
@@ -343,21 +329,18 @@
       const [view, setView] = useState('catalog');
       const [selectedCategory, setSelectedCategory] = useState('all');
       const [loading, setLoading] = useState(true);
-      const [submitting, setSubmitting] = useState(false); // Защита от двойного нажатия
-      const [addingToCart, setAddingToCart] = useState(null); // ID товара который добавляется
+      const [submitting, setSubmitting] = useState(false);
+      const [addingToCart, setAddingToCart] = useState(null);
       const [myOrders, setMyOrders] = useState([]);
       const [telegramUser, setTelegramUser] = useState(null);
       const [settings, setSettings] = useState(null);
-      const [lang, setLang] = useState('ru'); // Текущий язык
-      const [toast, setToast] = useState(null); // Toast уведомления
-      const [banners, setBanners] = useState([]); // Баннеры для карусели
-      const [currentBanner, setCurrentBanner] = useState(0); // Текущий баннер
-      
-      // 💰 Состояния для кэшбека
-      const [customer, setCustomer] = useState(null); // Данные клиента с балансом
-      const [useCashback, setUseCashback] = useState(false); // Использовать ли кэшбек
-      const [cashbackTransactions, setCashbackTransactions] = useState([]); // История
-      
+      const [lang, setLang] = useState('ru');
+      const [toast, setToast] = useState(null);
+      const [banners, setBanners] = useState([]);
+      const [currentBanner, setCurrentBanner] = useState(0);
+      // 💰 Кэшбек состояния
+      const [customer, setCustomer] = useState(null);
+      const [useCashback, setUseCashback] = useState(false);
       const [orderForm, setOrderForm] = useState({
         name: '',
         phone: '',
@@ -380,37 +363,17 @@
         });
       };
 
-      // 💰 Функция загрузки данных клиента
+      // 💰 Загрузка данных клиента
       const loadCustomerData = async (telegram_user_id) => {
         try {
-          const { data, error } = await supabase
+          const { data } = await supabase
             .from('flowers_customers')
             .select('*')
             .eq('telegram_user_id', telegram_user_id)
             .single();
-
-          if (data) {
-            setCustomer(data);
-          }
+          if (data) setCustomer(data);
         } catch (error) {
-          console.error('Ошибка загрузки клиента:', error);
-        }
-      };
-
-      // 💰 Функция загрузки истории транзакций
-      const loadCashbackHistory = async (customer_id) => {
-        try {
-          const { data, error } = await supabase
-            .from('flowers_cashback_transactions')
-            .select('*')
-            .eq('customer_id', customer_id)
-            .order('created_at', { ascending: false });
-
-          if (data) {
-            setCashbackTransactions(data);
-          }
-        } catch (error) {
-          console.error('Ошибка загрузки истории:', error);
+          console.log('Клиент ещё не создан');
         }
       };
 
@@ -423,13 +386,11 @@
           const user = tg.initDataUnsafe?.user;
           if (user) {
             setTelegramUser(user);
+            loadCustomerData(user.id); // 💰 Загружаем данные клиента
             setOrderForm(prev => ({
               ...prev,
               name: user.first_name + (user.last_name ? ' ' + user.last_name : '')
             }));
-
-            // 💰 Загружаем данные клиента с балансом кэшбека
-            loadCustomerData(user.id);
 
             // Автоопределение языка из Telegram
             const tgLang = user.language_code;
@@ -444,7 +405,7 @@
           }
           
           tg.BackButton.onClick(() => {
-            if (view === 'cart' || view === 'history' || view === 'cashback') setView('catalog');
+            if (view === 'cart' || view === 'history') setView('catalog');
             else if (view === 'checkout') setView('cart');
           });
           
@@ -681,13 +642,13 @@
 
         setSubmitting(true); // Блокируем кнопку
 
-        // 💰 Расчёт кэшбека
+        // 💰 Расчёт кэшбека с учётом использования
         const orderTotal = getTotalPrice();
         const availableCashback = customer?.cashback_balance || 0;
-        const maxCashbackUsage = orderTotal * 0.5; // Максимум 50% от суммы
+        const maxCashbackUsage = orderTotal * 0.5; // Макс 50%
         const cashbackUsed = useCashback ? Math.min(availableCashback, maxCashbackUsage) : 0;
         const finalAmount = orderTotal - cashbackUsed;
-        const cashbackEarned = finalAmount * 0.05; // 5% от финальной суммы
+        const cashbackEarned = Math.floor(finalAmount * 0.05); // 5% от финальной суммы
 
         const order = {
           id: Date.now().toString(),
@@ -701,9 +662,9 @@
           telegram_last_name: telegramUser?.last_name || null,
           items: cart,
           total: orderTotal,
-          cashback_earned: cashbackEarned, // 💰 Начисленный кэшбек
-          cashback_used: cashbackUsed, // 💰 Использованный кэшбек
-          final_amount: finalAmount, // Итого к оплате
+          cashback_earned: cashbackEarned,
+          cashback_used: cashbackUsed,
+          final_amount: finalAmount,
           status: settings?.payment_enabled ? 'pending_payment' : 'new'
         };
 
@@ -725,9 +686,7 @@
                 .single();
 
               if (existingCustomer) {
-                // Клиент есть - обновляем данные и начисляем/списываем кэшбек
-                const newBalance = (existingCustomer.cashback_balance || 0) - cashbackUsed + cashbackEarned;
-                
+                // Клиент есть - обновляем данные и начисляем кэшбек
                 await supabase
                   .from('flowers_customers')
                   .update({
@@ -739,17 +698,16 @@
                     total_orders: existingCustomer.total_orders + 1,
                     total_spent: (existingCustomer.total_spent || 0) + finalAmount,
                     last_order_date: new Date().toISOString(),
-                    // 💰 Обновляем баланс: -использовано +начислено
-                    cashback_balance: newBalance,
-                    total_earned: (existingCustomer.total_earned || 0) + cashbackEarned,
-                    total_used: (existingCustomer.total_used || 0) + cashbackUsed
+                    // 💰 Баланс: -использовано +начислено
+                    cashback_balance: (existingCustomer.cashback_balance || 0) - cashbackUsed + cashbackEarned,
+                    total_earned: (existingCustomer.total_earned || 0) + cashbackEarned
                   })
                   .eq('telegram_user_id', telegramUser.id);
                 
-                // Перезагружаем данные клиента
+                // Обновляем данные клиента
                 loadCustomerData(telegramUser.id);
               } else {
-                // Новый клиент - создаём запись с кэшбеком
+                // Новый клиент
                 await supabase
                   .from('flowers_customers')
                   .insert([{
@@ -761,15 +719,12 @@
                     total_orders: 1,
                     total_spent: finalAmount,
                     last_order_date: new Date().toISOString(),
-                    // 💰 Начисляем кэшбек на первый заказ
                     cashback_balance: cashbackEarned,
-                    total_earned: cashbackEarned,
-                    total_used: 0
+                    total_earned: cashbackEarned
                   }]);
                 
-                // Загружаем данные нового клиента
+                // Загружаем данные
                 loadCustomerData(telegramUser.id);
-                  }]);
               }
             } catch (customerError) {
               console.error('Ошибка сохранения клиента:', customerError);
@@ -782,7 +737,7 @@
           await sendPaymentInfo(order);
 
           setCart([]);
-          setUseCashback(false); // 💰 Сбрасываем чекбокс кэшбека
+          setUseCashback(false); // 💰 Сбрасываем чекбокс
           setOrderForm({ ...orderForm, comment: '' });
           setView('catalog');
           await loadMyOrders();
@@ -1078,70 +1033,41 @@
             <div className="p-4 pb-24">
               <h2 className="text-2xl font-bold text-gray-800 mb-4">{t.myCashback}</h2>
               
-              {/* Баланс кэшбека */}
+              {/* Баланс */}
               <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white mb-6 shadow-lg">
                 <p className="text-sm opacity-90 mb-2">{t.balance}</p>
-                <p className="text-4xl font-bold">{customer?.cashback_balance?.toFixed(0) || 0} ₸</p>
+                <p className="text-4xl font-bold">{Math.floor(customer?.cashback_balance || 0)} ₸</p>
                 <p className="text-sm mt-3 opacity-90">
-                  {t.available}: {customer?.cashback_balance?.toFixed(0) || 0} ₸
+                  {t.available}: {Math.floor(customer?.cashback_balance || 0)} ₸
                 </p>
               </div>
 
               {/* Статистика */}
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-white rounded-lg p-4 shadow-sm">
-                  <p className="text-sm text-gray-500 mb-1">{t.earned}</p>
+                  <p className="text-sm text-gray-500 mb-1">{lang === 'kk' ? 'Есептелді' : 'Заработано'}</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {customer?.total_earned?.toFixed(0) || 0} ₸
+                    {Math.floor(customer?.total_earned || 0)} ₸
                   </p>
                 </div>
                 <div className="bg-white rounded-lg p-4 shadow-sm">
-                  <p className="text-sm text-gray-500 mb-1">{t.spent}</p>
+                  <p className="text-sm text-gray-500 mb-1">{lang === 'kk' ? 'Тапсырыстар' : 'Заказов'}</p>
                   <p className="text-2xl font-bold text-gray-700">
-                    {customer?.total_spent?.toFixed(0) || 0} ₸
+                    {customer?.total_orders || 0}
                   </p>
                 </div>
               </div>
 
               {/* Как работает */}
-              <div className="bg-blue-50 rounded-lg p-4 mb-6">
+              <div className="bg-blue-50 rounded-lg p-4">
                 <p className="font-semibold text-gray-800 mb-2">💡 {lang === 'kk' ? 'Қалай жұмыс істейді?' : 'Как работает?'}</p>
                 <ul className="text-sm text-gray-700 space-y-1">
                   <li>• {lang === 'kk' ? 'Әр тапсырыстан 5% кэшбек аласыз' : 'Получайте 5% кэшбек с каждого заказа'}</li>
                   <li>• {lang === 'kk' ? 'Келесі тапсырыста кэшбек пайдаланыңыз' : 'Используйте кэшбек в следующих заказах'}</li>
+                  <li>• {lang === 'kk' ? 'Максимум 50% тапсырыс сомасынан' : 'Максимум 50% от суммы заказа'}</li>
                   <li>• {lang === 'kk' ? 'Кэшбек автоматты түрде есептеледі' : 'Кэшбек начисляется автоматически'}</li>
                 </ul>
               </div>
-
-              {/* История транзакций */}
-              {cashbackTransactions.length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-gray-800 mb-3">{t.history}</h3>
-                  <div className="space-y-2">
-                    {cashbackTransactions.map(tx => (
-                      <div key={tx.id} className="bg-white rounded-lg p-3 shadow-sm flex justify-between items-center">
-                        <div>
-                          <p className="font-medium text-gray-800">
-                            {tx.type === 'earned' ? '+ ' : '- '}
-                            {tx.amount} ₸
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {t.order} #{tx.order_id?.slice(-6)}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {formatDateTime(tx.created_at)}
-                          </p>
-                        </div>
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          tx.type === 'earned' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                        }`}>
-                          {tx.type === 'earned' ? t.earned : t.spent}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -1188,56 +1114,54 @@
                           type="checkbox"
                           checked={useCashback}
                           onChange={(e) => setUseCashback(e.target.checked)}
-                          className="w-5 h-5 text-green-600"
+                          className="w-5 h-5"
                         />
                         <div className="flex-1">
                           <p className="font-medium text-gray-800">{t.useCashback}</p>
                           <p className="text-sm text-gray-600">
-                            {t.available}: {customer.cashback_balance.toFixed(0)} ₸
+                            {t.available}: {Math.floor(customer.cashback_balance)} ₸
                           </p>
                         </div>
                       </label>
                       {useCashback && (
-                        <div className="mt-3 pt-3 border-t border-green-200">
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-gray-600">{t.cashbackUsed}:</span>
+                        <div className="mt-3 pt-3 border-t border-green-200 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Будет списано:</span>
                             <span className="font-medium text-green-600">
-                              -{Math.min(customer.cashback_balance, getTotalPrice() * 0.5).toFixed(0)} ₸
+                              -{Math.floor(Math.min(customer.cashback_balance, getTotalPrice() * 0.5))} ₸
                             </span>
                           </div>
                         </div>
                       )}
                     </div>
                   )}
-
+                  
                   <div className="bg-white rounded-lg p-4 shadow-sm mb-4">
-                    {useCashback && customer && (
+                    {useCashback && customer ? (
                       <>
-                        <div className="flex justify-between items-center text-sm mb-2">
+                        <div className="flex justify-between text-sm mb-2">
                           <span className="text-gray-600">{lang === 'kk' ? 'Тауарлар' : 'Товары'}:</span>
-                          <span className="text-gray-700">{getTotalPrice()} ₸</span>
+                          <span>{getTotalPrice()} ₸</span>
                         </div>
-                        <div className="flex justify-between items-center text-sm mb-2">
-                          <span className="text-green-600">{t.cashbackUsed}:</span>
-                          <span className="text-green-600">
-                            -{Math.min(customer.cashback_balance, getTotalPrice() * 0.5).toFixed(0)} ₸
-                          </span>
+                        <div className="flex justify-between text-sm mb-2 text-green-600">
+                          <span>Кэшбек:</span>
+                          <span>-{Math.floor(Math.min(customer.cashback_balance, getTotalPrice() * 0.5))} ₸</span>
                         </div>
                         <div className="border-t pt-2"></div>
                       </>
-                    )}
+                    ) : null}
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-bold">{t.total}:</span>
                       <span className="text-2xl font-bold text-gray-700">
                         {useCashback && customer 
-                          ? (getTotalPrice() - Math.min(customer.cashback_balance, getTotalPrice() * 0.5)).toFixed(0)
+                          ? Math.floor(getTotalPrice() - Math.min(customer.cashback_balance, getTotalPrice() * 0.5))
                           : getTotalPrice()
                         } ₸
                       </span>
                     </div>
                     {!useCashback && (
                       <p className="text-sm text-green-600 mt-2">
-                        {t.youWillEarn}: +{(getTotalPrice() * 0.05).toFixed(0)} ₸
+                        {t.youWillEarn}: +{Math.floor(getTotalPrice() * 0.05)} ₸
                       </p>
                     )}
                   </div>
@@ -1544,12 +1468,9 @@
                   view === 'cashback' ? 'text-green-600' : 'text-gray-500'
                 }`}
               >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <text x="12" y="16" fontSize="12" fill="currentColor" textAnchor="middle" fontWeight="bold">₸</text>
-                </svg>
+                <span className="text-2xl">💰</span>
                 {customer && customer.cashback_balance > 0 && (
-                  <span className="absolute top-1 right-1/4 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">
+                  <span className="absolute -top-1 right-1/4 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">
                     {Math.floor(customer.cashback_balance)}
                   </span>
                 )}
