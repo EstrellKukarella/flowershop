@@ -920,7 +920,7 @@
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <p className="font-bold text-gray-800">Заказ #{order.id.slice(-6)}</p>
-                          <p className="text-xs text-gray-500">{formatDateTime(order.date)}</p>
+                          <p className="text-xs text-gray-500">{formatDateTime(order.created_at)}</p>
                         </div>
                         <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(order.status)}`}>
                           {getStatusText(order.status)}
