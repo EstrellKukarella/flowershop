@@ -63,7 +63,7 @@
       
       <!-- Описание -->
       <p class="text-gray-600 mb-12 text-xl leading-relaxed" id="onboarding-subtitle">
-        Свежая выпечка с доставкой прямо к вашей двери
+        Свежие цветы с доставкой прямо к вашей двери
       </p>
       
       <!-- Преимущества -->
@@ -74,7 +74,7 @@
           </div>
           <div>
             <p class="text-gray-800 font-semibold text-lg" id="onboarding-feature1-title">Широкий ассортимент</p>
-            <p class="text-gray-500 text-base" id="onboarding-feature1-desc">Более 50 видов выпечки</p>
+            <p class="text-gray-500 text-base" id="onboarding-feature1-desc">Букеты, композиции, монобукеты</p>
           </div>
         </div>
         
@@ -116,9 +116,9 @@
       ru: {
         welcome: 'Добро пожаловать!',
         company: 'Цветочная лавка',
-        subtitle: 'Свежая выпечка с доставкой прямо к вашей двери',
+        subtitle: 'Свежие цветы с доставкой прямо к вашей двери',
         feature1Title: 'Широкий ассортимент',
-        feature1Desc: 'Более 50 видов выпечки',
+        feature1Desc: 'Букеты, композиции, монобукеты',
         feature2Title: 'Быстрое оформление',
         feature2Desc: 'Заказ за 1 минуту',
         feature3Title: 'Отслеживание заказа',
@@ -127,10 +127,10 @@
       },
       kk: {
         welcome: 'Қош келдіңіз!',
-        company: 'Біздің кондитерлік',
-        subtitle: 'Жаңа пісірілген нан өнімдері есігіңізге жеткізіледі',
+        company: 'Гүл дүкені',
+        subtitle: 'Есігіңізге жеткізілетін жаңа гүлдер',
         feature1Title: 'Кең ассортимент',
-        feature1Desc: '50-ден астам нан өнімдері',
+        feature1Desc: 'Шоқтар, композициялар, монобукеттер',
         feature2Title: 'Жылдам рәсімдеу',
         feature2Desc: 'Тапсырыс 1 минутта',
         feature3Title: 'Тапсырысты қадағалау',
@@ -240,7 +240,7 @@
         youWillEarn: "Вы получите"
       },
       kk: {
-        shopTitle: "Біздің кондитерлік",
+        shopTitle: "Гүл дүкені",
         cart: "Себет",
         addToCart: "Себетке",
         checkout: "Тапсырыс беру",
@@ -507,7 +507,7 @@
           const { data, error } = await supabase
             .from('flowers_products')
             .select('*')
-            .eq('available', true)
+            .eq('is_available', true)
             .order('created_at', { ascending: false })
             .limit(100);
 
@@ -531,7 +531,7 @@
             .from('flowers_orders')
             .select('*')
             .eq('telegram_user_id', telegramUser.id)
-            .order('date', { ascending: false })
+            .order('created_at', { ascending: false })
             .limit(50);
 
           if (error) throw error;
@@ -990,7 +990,7 @@
                           <div>
                             <p className="font-bold text-gray-800">{lang === 'kk' ? 'Тапсырыс' : 'Заказ'} #{order.id.slice(-6)}</p>
                             <p className="text-xs text-gray-500">
-                              {formatDateTime(order.date)}
+                              {formatDateTime(order.created_at)}
                             </p>
                           </div>
                           <span className={`text-xs px-2 py-1 rounded-full ${statusInfo.color}`}>
