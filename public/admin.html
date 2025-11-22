@@ -117,7 +117,7 @@
       const loadBanners = async () => {
         try {
           const { data, error } = await supabase
-            .from('banners')
+            .from('flowers_banners')
             .select('*')
             .order('order_index', { ascending: true })
             .limit(50);
@@ -210,7 +210,7 @@
           const { data, error } = await supabase
             .from('flowers_orders')
             .select('*')
-            .order('date', { ascending: false})
+            .order('created_at', { ascending: false})
             .limit(50);  // Загружаем только 50 последних заказов!
 
           if (error) throw error;
@@ -282,7 +282,7 @@
         try {
           const { error } = await supabase
             .from('flowers_products')
-            .update({ available: !currentStatus })
+            .update({ is_available: !currentStatus })
             .eq('id', productId);
           
           if (error) throw error;
@@ -303,14 +303,14 @@
 
           if (editingBanner) {
             const { error } = await supabase
-              .from('banners')
+              .from('flowers_banners')
               .update(bannerData)
               .eq('id', editingBanner.id);
             
             if (error) throw error;
           } else {
             const { error } = await supabase
-              .from('banners')
+              .from('flowers_banners')
               .insert([bannerData]);
             
             if (error) throw error;
@@ -339,7 +339,7 @@
         if (window.confirm('Удалить баннер?')) {
           try {
             const { error } = await supabase
-              .from('banners')
+              .from('flowers_banners')
               .delete()
               .eq('id', id);
             
@@ -370,7 +370,7 @@
       const toggleBannerStatus = async (bannerId, currentStatus) => {
         try {
           const { error } = await supabase
-            .from('banners')
+            .from('flowers_banners')
             .update({ is_active: !currentStatus })
             .eq('id', bannerId);
           
@@ -583,14 +583,14 @@
                         </div>
                         <div className="flex items-center gap-2 mt-2">
                           <button
-                            onClick={() => toggleProductAvailability(product.id, product.available)}
+                            onClick={() => toggleProductAvailability(product.id, product.is_available)}
                             className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition ${
-                              product.available 
+                              product.is_available 
                                 ? 'bg-green-100 text-green-700 hover:bg-green-200' 
                                 : 'bg-red-100 text-red-700 hover:bg-red-200'
                             }`}
                           >
-                            {product.available ? '✅ В наличии' : '❌ Нет в наличии'}
+                            {product.is_available ? '✅ В наличии' : '❌ Нет в наличии'}
                           </button>
                         </div>
                       </div>
