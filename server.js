@@ -19,7 +19,7 @@ const BOT_USERNAME = process.env.BOT_USERNAME || '';
 const ADMIN_ID = parseInt(process.env.ADMIN_ID); // Преобразуем в число!
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
-const PROJECT_TYPE = process.env.PROJECT_TYPE || 'flowers'; // 'bakery' или 'flowers'
+const PROJECT_TYPE = process.env.PROJECT_TYPE || 'bakery'; // 'bakery' или 'flowers'
 
 // 🎯 Функция для получения правильных имён таблиц
 const getTableName = (baseName) => {
@@ -117,8 +117,8 @@ Mini App ашып, жаңа пісірілген өнімдерді есігің
 };
 
 // URL Mini App
-const CLIENT_APP_URL = "https://flowershop-6jdk.onrender.com";
-const ADMIN_APP_URL = "https://flowershop-6jdk.onrender.com/admin.html";
+const CLIENT_APP_URL = "https://telegram-miniapp-fd6b.onrender.com";
+const ADMIN_APP_URL = "https://telegram-miniapp-fd6b.onrender.com/admin.html";
 
 // Проверка конфигурации
 if (!BOT_TOKEN || !ADMIN_ID || !SUPABASE_URL || !SUPABASE_KEY) {
@@ -1062,7 +1062,7 @@ app.get('/health', (req, res) => {
 async function setupWebhookOnStartup() {
   try {
     // Получаем текущий URL где запущен сервер
-    const webhookUrl = `https://flowershop-6jdk.onrender.com/webhook`;
+    const webhookUrl = `https://telegram-miniapp-fd6b.onrender.com/webhook`;
     
     // Проверяем текущий webhook
     const checkResponse = await axios.get(
