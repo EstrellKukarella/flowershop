@@ -599,7 +599,6 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               orderId: order.id,
-              date: order.date,
               customerName: order.customer_name,
               customerPhone: order.customer_phone,
               customerComment: order.customer_comment,
@@ -652,7 +651,6 @@
 
         const order = {
           id: Date.now().toString(),
-          date: new Date().toISOString(),
           customer_name: orderForm.name,
           customer_phone: orderForm.phone,
           customer_comment: orderForm.comment,
