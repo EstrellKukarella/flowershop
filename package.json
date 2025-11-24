@@ -1,7 +1,7 @@
 {
   "name": "flowershop",
   "version": "1.0.0",
-  "description": "Telegram Mini App для цветочного с безопасным бэкендом",
+  "description": "Telegram Mini App для цветочного магазина с доставкой",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -16,5 +16,8 @@
   },
   "engines": {
     "node": "20.x"
-  }
+  },
+  "keywords": ["telegram", "mini-app", "flowers", "shop", "kazakh"],
+  "author": "Alibek",
+  "license": "MIT"
 }
