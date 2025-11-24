@@ -746,15 +746,7 @@ app.post('/api/setup-webhook', async (req, res) => {
 // API: Настройка Menu Button вручную
 app.get('/api/setup-menu-button', async (req, res) => {
   try {
-    if (!ADMIN_ID) {
-      return res.status(400).json({ 
-        error: 'ADMIN_ID не настроен' 
-      });
-    }
-
-    const results = [];
-
-    // 1. Настройка кнопки для всех пользователей (каталог)
+    // Настройка кнопки для ВСЕХ пользователей (включая админа)
     console.log(`🔄 Настройка Menu Button для всех пользователей...`);
     
     const defaultMenuResponse = await axios.post(
@@ -769,44 +761,19 @@ app.get('/api/setup-menu-button', async (req, res) => {
     );
 
     if (defaultMenuResponse.data.ok) {
-      console.log(`✅ Menu Button для всех настроена: ${CLIENT_APP_URL}`);
-      results.push({
-        target: 'all_users',
+      console.log(`✅ Menu Button настроена для всех: ${CLIENT_APP_URL}`);
+      res.json({
         success: true,
-        url: CLIENT_APP_URL
+        message: 'Menu Button настроена! У всех (включая админа) слева будет "🌸 Выбрать букет"',
+        url: CLIENT_APP_URL,
+        note: 'Админ дополнительно имеет кнопки снизу: Админ-панель, Статистика, Рассылка'
+      });
+    } else {
+      res.status(500).json({
+        error: 'Telegram вернул ошибку',
+        details: defaultMenuResponse.data
       });
     }
-
-    // 2. Настройка кнопки для админа (админ-панель)
-    console.log(`🔄 Настройка Menu Button для админа ${ADMIN_ID}...`);
-    
-    const adminMenuResponse = await axios.post(
-      `https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton`,
-      {
-        chat_id: ADMIN_ID,
-        menu_button: {
-          type: 'web_app',
-          text: '⚙️ Админ-панель',
-          web_app: { url: ADMIN_APP_URL }
-        }
-      }
-    );
-
-    if (adminMenuResponse.data.ok) {
-      console.log(`✅ Menu Button для админа настроена: ${ADMIN_APP_URL}`);
-      results.push({
-        target: 'admin',
-        adminId: ADMIN_ID,
-        success: true,
-        url: ADMIN_APP_URL
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Menu Button настроены для всех и админа!',
-      results: results
-    });
 
   } catch (error) {
     console.error(`❌ Ошибка настройки Menu Button:`, error.message);
@@ -871,25 +838,8 @@ async function setupWebhookOnStartup() {
       }
     }
     
-    // Настройка Menu Button для админа
-    console.log(`🔄 Настройка Menu Button для админа...`);
-    const menuButtonResponse = await axios.post(
-      `https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton`,
-      {
-        chat_id: ADMIN_ID,
-        menu_button: {
-          type: 'web_app',
-          text: '⚙️ Админ-панель',
-          web_app: { url: ADMIN_APP_URL }
-        }
-      }
-    );
-    
-    if (menuButtonResponse.data.ok) {
-      console.log(`✅ Menu Button настроена для админа: ${ADMIN_APP_URL}`);
-    } else {
-      console.error(`❌ Ошибка настройки Menu Button:`, menuButtonResponse.data);
-    }
+    // Menu Button настраивается вручную через BotFather
+    console.log(`ℹ️  Menu Button настраивается через BotFather или /api/setup-menu-button`);
   } catch (error) {
     console.error(`❌ Ошибка при установке webhook:`, error.message);
   }
