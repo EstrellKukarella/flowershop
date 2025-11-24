@@ -117,8 +117,8 @@ Mini App ашып, жаңа пісірілген өнімдерді есігің
 };
 
 // URL Mini App
-const CLIENT_APP_URL = "https://telegram-miniapp-fd6b.onrender.com";
-const ADMIN_APP_URL = "https://telegram-miniapp-fd6b.onrender.com/admin.html";
+const CLIENT_APP_URL = "https://flowershop-6jdk.onrender.com";
+const ADMIN_APP_URL = "https://flowershop-6jdk.onrender.com/admin.html";
 
 // Проверка конфигурации
 if (!BOT_TOKEN || !ADMIN_ID || !SUPABASE_URL || !SUPABASE_KEY) {
