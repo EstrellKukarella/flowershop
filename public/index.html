@@ -3,10 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Цветочная Лавка 🌸</title>
-  
-  <link rel="preconnect" href="https://unpkg.com">
-  <link rel="preconnect" href="https://cdn.tailwindcss.com">
+  <title>Цветочная Лавка</title>
   
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -16,181 +13,45 @@
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <style>
-    body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Roboto',sans-serif;background: linear-gradient(135deg, #fdfcfb 0%, #fff5f7 100%);}
-    @keyframes slideDown{from{opacity:0;transform:translate(-50%,-20px)}to{opacity:1;transform:translate(-50%,0)}}
-    .animate-slideDown{animation:slideDown 0.3s ease-out}
-    .line-clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Roboto',sans-serif;background:#f5f5f5;}
+    .card{background:#fff;border:1px solid #e5e5e5;transition:all 0.3s;}
+    .card:hover{box-shadow:0 4px 12px rgba(0,0,0,0.08);border-color:#999;}
+    .btn-black{background:#000;color:#fff;transition:all 0.3s;}
+    .btn-black:hover{background:#333;}
+    .category-scroll{overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;}
+    .category-scroll::-webkit-scrollbar{display:none;}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
     .animate-fadeIn{animation:fadeIn 0.3s ease-out}
-    .animate-slideUp{animation:slideUp 0.5s ease-out}
-    .onboarding-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg, #fdfcfb 0%, #fff5f7 100%);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
-    .flower-card{transition:all 0.3s ease;border:2px solid transparent;}
-    .flower-card:hover{border-color:#ec4899;box-shadow:0 10px 30px rgba(236, 72, 153, 0.2);transform:translateY(-2px);}
-    .gradient-pink{background:linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);}
-    .gradient-rose{background:linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);}
+    .animate-slideUp{animation:slideUp 0.3s ease-out}
   </style>
 </head>
 <body>
   <div id="root"></div>
-  
-  <!-- Onboarding экран -->
-  <div id="onboarding" class="onboarding-overlay" style="display: none;">
-    <div class="animate-slideUp text-center max-w-lg px-6">
-      <!-- Логотип цветка -->
-      <div class="mb-8">
-        <div class="w-32 h-32 mx-auto rounded-full bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center shadow-2xl">
-          <span class="text-7xl">🌸</span>
-        </div>
-      </div>
-      
-      <!-- Приветствие -->
-      <h1 class="text-2xl font-semibold text-gray-600 mb-3" id="onboarding-welcome">
-        Добро пожаловать!
-      </h1>
-      
-      <!-- Название -->
-      <h2 class="text-4xl font-bold bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent mb-6" id="onboarding-company">
-        Цветочная Лавка
-      </h2>
-      
-      <!-- Описание -->
-      <p class="text-gray-600 mb-10 text-xl leading-relaxed" id="onboarding-subtitle">
-        Свежие цветы с доставкой прямо к вашей двери
-      </p>
-      
-      <!-- Преимущества -->
-      <div class="space-y-5 mb-10 text-left">
-        <div class="flex items-start gap-4 bg-white rounded-2xl p-4 shadow-sm">
-          <div class="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center flex-shrink-0">
-            <span class="text-2xl">🌹</span>
-          </div>
-          <div>
-            <p class="text-gray-800 font-semibold text-lg" id="onboarding-feature1-title">Всегда свежие</p>
-            <p class="text-gray-500" id="onboarding-feature1-desc">Букеты из свежих цветов каждый день</p>
-          </div>
-        </div>
-        
-        <div class="flex items-start gap-4 bg-white rounded-2xl p-4 shadow-sm">
-          <div class="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center flex-shrink-0">
-            <span class="text-2xl">🚚</span>
-          </div>
-          <div>
-            <p class="text-gray-800 font-semibold text-lg" id="onboarding-feature2-title">Быстрая доставка</p>
-            <p class="text-gray-500" id="onboarding-feature2-desc">По всей Астане за 2 часа</p>
-          </div>
-        </div>
-        
-        <div class="flex items-start gap-4 bg-white rounded-2xl p-4 shadow-sm">
-          <div class="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center flex-shrink-0">
-            <span class="text-2xl">💐</span>
-          </div>
-          <div>
-            <p class="text-gray-800 font-semibold text-lg" id="onboarding-feature3-title">Большой выбор</p>
-            <p class="text-gray-500" id="onboarding-feature3-desc">Букеты на любой вкус и повод</p>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Кнопка -->
-      <button 
-        onclick="closeOnboarding()" 
-        class="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white py-5 rounded-2xl font-bold text-xl shadow-xl transition-all transform hover:scale-105"
-        id="onboarding-button"
-      >
-        Выбрать букет 💐
-      </button>
-    </div>
-  </div>
-  
-  <script>
-    // Тексты для onboarding
-    const onboardingTranslations = {
-      ru: {
-        welcome: 'Добро пожаловать!',
-        company: 'Цветочная Лавка',
-        subtitle: 'Свежие цветы с доставкой прямо к вашей двери',
-        feature1Title: 'Всегда свежие',
-        feature1Desc: 'Букеты из свежих цветов каждый день',
-        feature2Title: 'Быстрая доставка',
-        feature2Desc: 'По всей Астане за 2 часа',
-        feature3Title: 'Большой выбор',
-        feature3Desc: 'Букеты на любой вкус и повод',
-        button: 'Выбрать букет 💐'
-      },
-      kk: {
-        welcome: 'Қош келдіңіз!',
-        company: 'Гүл Дүкені',
-        subtitle: 'Есігіңізге жеткізілетін жаңа гүлдер',
-        feature1Title: 'Әрқашан жаңа',
-        feature1Desc: 'Күн сайын жаңа гүлдерден шоқтар',
-        feature2Title: 'Жылдам жеткізу',
-        feature2Desc: 'Астана бойынша 2 сағатта',
-        feature3Title: 'Үлкен таңдау',
-        feature3Desc: 'Кез келген талғам мен себепке шоқтар',
-        button: 'Шоқ таңдау 💐'
-      }
-    };
-    
-    function detectOnboardingLanguage() {
-      if (window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code === 'kk') {
-        return 'kk';
-      }
-      return 'ru';
-    }
-    
-    function setOnboardingLanguage() {
-      const lang = detectOnboardingLanguage();
-      const t = onboardingTranslations[lang];
-      
-      document.getElementById('onboarding-welcome').textContent = t.welcome;
-      document.getElementById('onboarding-company').textContent = t.company;
-      document.getElementById('onboarding-subtitle').textContent = t.subtitle;
-      document.getElementById('onboarding-feature1-title').textContent = t.feature1Title;
-      document.getElementById('onboarding-feature1-desc').textContent = t.feature1Desc;
-      document.getElementById('onboarding-feature2-title').textContent = t.feature2Title;
-      document.getElementById('onboarding-feature2-desc').textContent = t.feature2Desc;
-      document.getElementById('onboarding-feature3-title').textContent = t.feature3Title;
-      document.getElementById('onboarding-feature3-desc').textContent = t.feature3Desc;
-      document.getElementById('onboarding-button').textContent = t.button;
-    }
-    
-    function checkOnboarding() {
-      const hasSeenOnboarding = localStorage.getItem('hasSeenFlowerOnboarding');
-      if (!hasSeenOnboarding) {
-        setOnboardingLanguage();
-        document.getElementById('onboarding').style.display = 'flex';
-      }
-    }
-    
-    function closeOnboarding() {
-      localStorage.setItem('hasSeenFlowerOnboarding', 'true');
-      document.getElementById('onboarding').style.display = 'none';
-    }
-    
-    window.addEventListener('DOMContentLoaded', checkOnboarding);
-  </script>
 
   <script type="text/babel">
     const { useState, useEffect } = React;
-    
+
     const FlowerShop = () => {
-      const [lang, setLang] = useState('ru');
       const [view, setView] = useState('catalog');
+      const [lang, setLang] = useState('ru');
       const [products, setProducts] = useState([]);
       const [cart, setCart] = useState([]);
-      const [customer, setCustomer] = useState(null);
       const [orders, setOrders] = useState([]);
+      const [customer, setCustomer] = useState(null);
       const [settings, setSettings] = useState(null);
+      const [cashbackTransactions, setCashbackTransactions] = useState([]);
+      const [selectedProduct, setSelectedProduct] = useState(null);
+      const [selectedCategory, setSelectedCategory] = useState('all');
+      const [categories, setCategories] = useState([]);
+      const [useCashback, setUseCashback] = useState(false);
+      const [cashbackAmount, setCashbackAmount] = useState(0);
       const [toast, setToast] = useState(null);
       const [loading, setLoading] = useState(true);
       const [supabase, setSupabase] = useState(null);
-      const [cashbackTransactions, setCashbackTransactions] = useState([]);
-      const [useCashback, setUseCashback] = useState(false);
-      const [cashbackAmount, setCashbackAmount] = useState(0);
-      
+
       const tg = window.Telegram?.WebApp;
-      
+
       // Переводы
       const translations = {
         ru: {
@@ -198,142 +59,136 @@
           cart: 'Корзина',
           orders: 'Заказы',
           profile: 'Профиль',
-          cashback: 'Кэшбек',
-          toCart: 'В корзину',
-          inCart: 'В корзине',
-          empty: 'Пусто',
+          allCategories: 'Все',
+          name: 'Имя',
+          phone: 'Телефон',
+          comment: 'Комментарий',
           total: 'Итого',
           order: 'Оформить заказ',
-          name: 'Ваше имя',
-          phone: 'Телефон',
-          comment: 'Комментарий к заказу',
+          addToCart: 'В корзину',
+          empty: 'Пусто',
+          noOrders: 'Нет заказов',
           orderSuccess: 'Заказ оформлен!',
-          thankYou: 'Спасибо за заказ! Мы скоро свяжемся с вами.',
-          noProducts: 'Товары загружаются...',
-          noOrders: 'У вас пока нет заказов',
-          status: {
-            pending: '⏰ Ожидает',
-            processing: '👨‍🍳 Готовится',
-            ready: '✅ Готов',
-            delivered: '🎉 Доставлен',
-            cancelled: '❌ Отменён'
-          },
-          fresh: 'Свежие цветы',
-          bestseller: 'Хит продаж',
-          new: 'Новинка'
+          details: 'Подробнее',
+          back: 'Назад',
+          cashback: 'Кэшбек',
+          balance: 'Баланс',
+          history: 'История',
+          useCashback: 'Использовать кэшбек',
+          myProfile: 'Мой профиль',
+          totalOrders: 'Всего заказов'
         },
         kk: {
           catalog: 'Каталог',
           cart: 'Себет',
           orders: 'Тапсырыстар',
           profile: 'Профиль',
-          cashback: 'Кэшбек',
-          toCart: 'Себетке',
-          inCart: 'Себетте',
-          empty: 'Бос',
+          allCategories: 'Барлығы',
+          name: 'Аты',
+          phone: 'Телефон',
+          comment: 'Түсініктеме',
           total: 'Барлығы',
           order: 'Тапсырыс беру',
-          name: 'Атыңыз',
-          phone: 'Телефон',
-          comment: 'Тапсырысқа түсініктеме',
-          orderSuccess: 'Тапсырыс рәсімделді!',
-          thankYou: 'Тапсырысыңызға рахмет! Жақында сізбен хабарласамыз.',
-          noProducts: 'Тауарлар жүктелуде...',
-          noOrders: 'Әзірге тапсырыстарыңыз жоқ',
-          status: {
-            pending: '⏰ Күтуде',
-            processing: '👨‍🍳 Дайындалуда',
-            ready: '✅ Дайын',
-            delivered: '🎉 Жеткізілді',
-            cancelled: '❌ Бас тартылды'
-          },
-          fresh: 'Жаңа гүлдер',
-          bestseller: 'Танымал',
-          new: 'Жаңалық'
+          addToCart: 'Себетке',
+          empty: 'Бос',
+          noOrders: 'Тапсырыстар жоқ',
+          orderSuccess: 'Тапсырыс қабылданды!',
+          details: 'Толығырақ',
+          back: 'Артқа',
+          cashback: 'Кэшбек',
+          balance: 'Баланс',
+          history: 'Тарих',
+          useCashback: 'Кэшбекті пайдалану',
+          myProfile: 'Менің профилім',
+          totalOrders: 'Барлық тапсырыстар'
         }
       };
-      
+
       const t = translations[lang];
-      
-      // Инициализация
+
       useEffect(() => {
-        tg?.ready();
-        tg?.expand();
-        tg?.enableClosingConfirmation();
-        
-        const userLang = tg?.initDataUnsafe?.user?.language_code;
-        if (userLang === 'kk') setLang('kk');
-        
+        if (tg) {
+          tg.ready();
+          tg.expand();
+          
+          const user = tg.initDataUnsafe?.user;
+          if (user?.language_code === 'kk') {
+            setLang('kk');
+          }
+        }
+
         initSupabase();
       }, []);
-      
+
       const initSupabase = async () => {
         try {
-          const response = await fetch('/api/config');
-          const config = await response.json();
+          const configResponse = await fetch('/api/config');
+          const config = await configResponse.json();
           
-          const supabaseClient = window.supabase.createClient(
-            config.supabaseUrl,
-            config.supabaseKey
-          );
+          const { createClient } = supabase;
+          const client = createClient(config.supabaseUrl, config.supabaseKey);
           
-          setSupabase(supabaseClient);
-          await loadData(supabaseClient);
+          setSupabase(client);
+          await loadData(client);
         } catch (error) {
           console.error('Ошибка инициализации:', error);
-          showToast('Ошибка подключения', 'error');
+          setLoading(false);
         }
       };
-      
+
       const loadData = async (client) => {
         try {
+          const userId = tg?.initDataUnsafe?.user?.id;
+
           // Загрузка товаров
           const { data: productsData } = await client
             .from('flowers_products')
             .select('*')
             .eq('available', true)
-            .order('name');
+            .order('created_at', { ascending: false });
           
           setProducts(productsData || []);
-          
+
+          // Извлекаем уникальные категории
+          const uniqueCategories = [...new Set(productsData?.map(p => p.category).filter(Boolean))];
+          setCategories(uniqueCategories);
+
           // Загрузка настроек
           const { data: settingsData } = await client
             .from('flowers_settings')
             .select('*')
+            .eq('id', 1)
             .single();
           
           setSettings(settingsData);
-          
-          // Загрузка клиента
-          const userId = tg?.initDataUnsafe?.user?.id;
+
           if (userId) {
+            // Загрузка клиента
             const { data: customerData } = await client
               .from('flowers_customers')
               .select('*')
               .eq('telegram_user_id', userId)
               .single();
             
-            if (customerData) {
-              setCustomer(customerData);
-              
-              // Загрузка заказов
-              const { data: ordersData } = await client
-                .from('flowers_orders')
-                .select('*')
-                .eq('telegram_user_id', userId)
-                .order('created_at', { ascending: false });
-              
-              setOrders(ordersData || []);
-              
-              // Загрузка истории кэшбека
-              const { data: transactionsData } = await client
-                .from('flowers_cashback_transactions')
-                .select('*')
-                .eq('telegram_user_id', userId)
-                .order('created_at', { ascending: false });
-              
-              setCashbackTransactions(transactionsData || []);
-            }
+            setCustomer(customerData);
+
+            // Загрузка заказов
+            const { data: ordersData } = await client
+              .from('flowers_orders')
+              .select('*')
+              .eq('telegram_user_id', userId)
+              .order('created_at', { ascending: false });
+            
+            setOrders(ordersData || []);
+
+            // Загрузка истории кэшбека
+            const { data: transactionsData } = await client
+              .from('flowers_cashback_transactions')
+              .select('*')
+              .eq('telegram_user_id', userId)
+              .order('created_at', { ascending: false });
+            
+            setCashbackTransactions(transactionsData || []);
           }
         } catch (error) {
           console.error('Ошибка загрузки:', error);
@@ -341,15 +196,15 @@
           setLoading(false);
         }
       };
-      
+
       const showToast = (message, type = 'success') => {
         setToast({ message, type });
         setTimeout(() => setToast(null), 3000);
       };
-      
+
       const addToCart = (product) => {
-        const existingItem = cart.find(item => item.id === product.id);
-        if (existingItem) {
+        const existing = cart.find(item => item.id === product.id);
+        if (existing) {
           setCart(cart.map(item => 
             item.id === product.id 
               ? { ...item, quantity: item.quantity + 1 }
@@ -358,10 +213,10 @@
         } else {
           setCart([...cart, { ...product, quantity: 1 }]);
         }
+        showToast(lang === 'kk' ? 'Себетке қосылды' : 'Добавлено в корзину');
         tg?.HapticFeedback?.impactOccurred('light');
-        showToast(lang === 'kk' ? 'Себетке қосылды! 🛒' : 'Добавлено в корзину! 🛒');
       };
-      
+
       const updateQuantity = (productId, delta) => {
         setCart(cart.map(item => {
           if (item.id === productId) {
@@ -371,25 +226,25 @@
           return item;
         }).filter(item => item.quantity > 0));
       };
-      
+
       const removeFromCart = (productId) => {
         setCart(cart.filter(item => item.id !== productId));
-        tg?.HapticFeedback?.impactOccurred('medium');
+        showToast(lang === 'kk' ? 'Себеттен өшірілді' : 'Удалено из корзины');
       };
-      
+
+      const getCartSubtotal = () => {
+        return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      };
+
       const getTotalPrice = () => {
-        const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const cartTotal = getCartSubtotal();
         if (useCashback && customer && customer.cashback_balance > 0) {
           const discount = Math.min(cashbackAmount, customer.cashback_balance, cartTotal);
           return Math.max(0, cartTotal - discount);
         }
         return cartTotal;
       };
-      
-      const getCartSubtotal = () => {
-        return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      };
-      
+
       const submitOrder = async () => {
         if (cart.length === 0) {
           showToast(lang === 'kk' ? 'Себет бос' : 'Корзина пуста', 'error');
@@ -414,7 +269,6 @@
           const cashbackUsed = useCashback ? Math.min(cashbackAmount, customer.cashback_balance, subtotal) : 0;
           const finalTotal = subtotal - cashbackUsed;
           
-          // Сохраняем в БД
           await supabase.from('flowers_orders').insert({
             id: orderId,
             telegram_user_id: userId,
@@ -428,7 +282,6 @@
             status: 'pending'
           });
           
-          // Если использован кэшбек - списываем и создаём транзакцию
           if (cashbackUsed > 0) {
             const newBalance = customer.cashback_balance - cashbackUsed;
             
@@ -448,7 +301,6 @@
               });
           }
           
-          // Отправляем уведомление
           await fetch('/api/send-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -482,37 +334,159 @@
           showToast(lang === 'kk' ? 'Қате орын алды' : 'Произошла ошибка', 'error');
         }
       };
-      
+
+      const filteredProducts = selectedCategory === 'all' 
+        ? products 
+        : products.filter(p => p.category === selectedCategory);
+
       if (loading) {
         return (
-          <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-rose-50">
+          <div className="min-h-screen flex items-center justify-center bg-gray-100">
             <div className="text-center">
               <div className="text-6xl mb-4 animate-bounce">🌸</div>
-              <p className="text-gray-600 font-medium">Загрузка...</p>
+              <p className="text-gray-600 font-medium">{lang === 'kk' ? 'Жүктелуде...' : 'Загрузка...'}</p>
             </div>
           </div>
         );
       }
-      
+
       return (
-        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 pb-20">
+        <div className="min-h-screen bg-gray-50 pb-20">
+          {/* Хедер с переключателем языка */}
+          <div className="bg-white border-b border-gray-200 p-4 sticky top-0 z-10">
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-bold text-gray-900">
+                {lang === 'kk' ? 'Гүл Дүкені' : 'Цветочная Лавка'}
+              </h1>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setLang('ru')}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                    lang === 'ru' ? 'bg-black text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  RU
+                </button>
+                <button
+                  onClick={() => setLang('kk')}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-all ${
+                    lang === 'kk' ? 'bg-black text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  KK
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Детальная страница товара */}
+          {selectedProduct && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end animate-fadeIn">
+              <div className="bg-white w-full rounded-t-3xl max-h-[90vh] overflow-y-auto animate-slideUp">
+                <div className="p-4">
+                  <button
+                    onClick={() => setSelectedProduct(null)}
+                    className="mb-4 text-gray-600 flex items-center gap-2"
+                  >
+                    ← {t.back}
+                  </button>
+                  
+                  {selectedProduct.image_url ? (
+                    <img 
+                      src={selectedProduct.image_url} 
+                      alt={selectedProduct.name}
+                      className="w-full h-80 object-cover rounded-2xl mb-4"
+                    />
+                  ) : (
+                    <div className="w-full h-80 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+                      <span className="text-8xl">🌺</span>
+                    </div>
+                  )}
+                  
+                  {selectedProduct.badge && (
+                    <div className="inline-block bg-black text-white text-xs px-3 py-1 rounded-full mb-3">
+                      {selectedProduct.badge === 'new' ? (lang === 'kk' ? '🎉 Жаңа' : '🎉 Новинка') :
+                       selectedProduct.badge === 'hit' ? (lang === 'kk' ? '⭐ Танымал' : '⭐ Хит') :
+                       selectedProduct.badge}
+                    </div>
+                  )}
+                  
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    {lang === 'kk' ? (selectedProduct.name_kk || selectedProduct.name) : selectedProduct.name}
+                  </h2>
+                  
+                  <p className="text-gray-600 mb-4">
+                    {lang === 'kk' ? (selectedProduct.description_kk || selectedProduct.description) : selectedProduct.description}
+                  </p>
+                  
+                  <div className="flex items-center justify-between mb-4 p-4 bg-gray-100 rounded-xl">
+                    <span className="text-sm text-gray-600">
+                      {lang === 'kk' ? 'Категория:' : 'Категория:'}
+                    </span>
+                    <span className="font-medium">
+                      {lang === 'kk' ? (selectedProduct.category_kk || selectedProduct.category) : selectedProduct.category}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between mb-6">
+                    <span className="text-3xl font-bold text-gray-900">
+                      {selectedProduct.price} ₸
+                    </span>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      addToCart(selectedProduct);
+                      setSelectedProduct(null);
+                    }}
+                    className="w-full bg-black text-white py-4 rounded-xl font-bold text-lg"
+                  >
+                    {t.addToCart}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Каталог */}
           {view === 'catalog' && (
             <div className="p-4">
-              {/* Заголовок */}
-              <div className="mb-6 text-center">
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent mb-2">
-                  🌸 {lang === 'kk' ? 'Гүл Дүкені' : 'Цветочная Лавка'}
-                </h1>
-                <p className="text-gray-600">{t.fresh}</p>
+              {/* Категории */}
+              <div className="category-scroll flex gap-2 mb-4 pb-2">
+                <button
+                  onClick={() => setSelectedCategory('all')}
+                  className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-all ${
+                    selectedCategory === 'all'
+                      ? 'bg-black text-white'
+                      : 'bg-white border border-gray-300 text-gray-700'
+                  }`}
+                >
+                  {t.allCategories}
+                </button>
+                {categories.map(category => (
+                  <button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-all ${
+                      selectedCategory === category
+                        ? 'bg-black text-white'
+                        : 'bg-white border border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    {category}
+                  </button>
+                ))}
               </div>
-              
+
               {/* Товары */}
               <div className="grid grid-cols-2 gap-3">
-                {products.map(product => (
-                  <div key={product.id} className="flower-card bg-white rounded-2xl shadow-sm overflow-hidden">
-                    {/* Фото */}
-                    <div className="relative h-40 bg-gradient-to-br from-pink-100 to-rose-100">
+                {filteredProducts.map(product => (
+                  <div 
+                    key={product.id} 
+                    className="card rounded-xl overflow-hidden cursor-pointer"
+                    onClick={() => setSelectedProduct(product)}
+                  >
+                    <div className="relative h-40 bg-gray-100">
                       {product.image_url ? (
                         <img 
                           src={product.image_url} 
@@ -525,7 +499,7 @@
                         </div>
                       )}
                       {product.badge && (
-                        <div className="absolute top-2 right-2 bg-pink-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+                        <div className="absolute top-2 right-2 bg-black text-white text-xs px-2 py-1 rounded-full font-bold">
                           {product.badge === 'new' ? (lang === 'kk' ? '🎉 Жаңа' : '🎉 Новинка') :
                            product.badge === 'hit' ? (lang === 'kk' ? '⭐ Танымал' : '⭐ Хит') :
                            product.badge}
@@ -533,43 +507,35 @@
                       )}
                     </div>
                     
-                    {/* Инфо */}
                     <div className="p-3">
-                      <h3 className="font-semibold text-gray-800 text-sm mb-1 line-clamp-2">
+                      <h3 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-2">
                         {lang === 'kk' ? (product.name_kk || product.name) : product.name}
                       </h3>
-                      <p className="text-xs text-gray-500 mb-2 line-clamp-1">
-                        {lang === 'kk' ? (product.description_kk || product.description) : product.description}
-                      </p>
                       <div className="flex items-center justify-between">
-                        <span className="text-lg font-bold text-pink-600">
+                        <span className="text-lg font-bold text-gray-900">
                           {product.price} ₸
                         </span>
                         <button
-                          onClick={() => addToCart(product)}
-                          className="bg-gradient-to-r from-pink-500 to-rose-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addToCart(product);
+                          }}
+                          className="bg-black text-white px-3 py-1.5 rounded-lg text-xs font-medium"
                         >
-                          {cart.find(item => item.id === product.id) ? t.inCart : t.toCart}
+                          +
                         </button>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-              
-              {products.length === 0 && (
-                <div className="text-center py-20">
-                  <div className="text-6xl mb-4">🌷</div>
-                  <p className="text-gray-500">{t.noProducts}</p>
-                </div>
-              )}
             </div>
           )}
-          
+
           {/* Корзина */}
           {view === 'cart' && (
             <div className="p-4">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">🛒 {t.cart}</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">🛒 {t.cart}</h2>
               
               {cart.length === 0 ? (
                 <div className="text-center py-20">
@@ -577,7 +543,7 @@
                   <p className="text-gray-500 mb-4">{t.empty}</p>
                   <button
                     onClick={() => setView('catalog')}
-                    className="bg-gradient-to-r from-pink-500 to-rose-500 text-white px-6 py-3 rounded-xl font-medium"
+                    className="bg-black text-white px-6 py-3 rounded-xl font-medium"
                   >
                     {lang === 'kk' ? 'Каталогқа оралу' : 'К каталогу'}
                   </button>
@@ -585,9 +551,9 @@
               ) : (
                 <div className="space-y-3 mb-20">
                   {cart.map(item => (
-                    <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm">
+                    <div key={item.id} className="bg-white rounded-xl p-4 border border-gray-200">
                       <div className="flex gap-3">
-                        <div className="w-20 h-20 bg-gradient-to-br from-pink-100 to-rose-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                           {item.image_url ? (
                             <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-lg"/>
                           ) : (
@@ -595,10 +561,10 @@
                           )}
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-800 text-sm">
+                          <h3 className="font-semibold text-gray-900 text-sm">
                             {lang === 'kk' ? (item.name_kk || item.name) : item.name}
                           </h3>
-                          <p className="text-pink-600 font-bold">{item.price} ₸</p>
+                          <p className="text-gray-900 font-bold">{item.price} ₸</p>
                           <div className="flex items-center gap-3 mt-2">
                             <button
                               onClick={() => updateQuantity(item.id, -1)}
@@ -609,7 +575,7 @@
                             <span className="font-semibold">{item.quantity}</span>
                             <button
                               onClick={() => updateQuantity(item.id, 1)}
-                              className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg flex items-center justify-center font-bold"
+                              className="w-8 h-8 bg-black text-white rounded-lg flex items-center justify-center font-bold"
                             >
                               +
                             </button>
@@ -626,30 +592,30 @@
                   ))}
                   
                   {/* Форма заказа */}
-                  <div className="bg-white rounded-xl p-4 shadow-sm space-y-3">
+                  <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-3">
                     <input
                       id="customerName"
                       type="text"
                       placeholder={t.name}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-pink-500"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-black"
                     />
                     <input
                       id="customerPhone"
                       type="tel"
                       placeholder={t.phone}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-pink-500"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-black"
                     />
                     <textarea
                       id="customerComment"
                       placeholder={t.comment}
                       rows="3"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-pink-500"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-black"
                     />
                   </div>
                   
                   {/* Использование кэшбека */}
                   {customer && customer.cashback_balance > 0 && (
-                    <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4 shadow-sm">
+                    <div className="bg-gray-100 border-2 border-gray-300 rounded-xl p-4">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <input
@@ -666,11 +632,11 @@
                             }}
                             className="w-5 h-5"
                           />
-                          <label htmlFor="useCashback" className="font-semibold text-green-800">
-                            {lang === 'kk' ? 'Кэшбекті пайдалану' : 'Использовать кэшбек'}
+                          <label htmlFor="useCashback" className="font-semibold text-gray-900">
+                            {t.useCashback}
                           </label>
                         </div>
-                        <span className="font-bold text-green-700">
+                        <span className="font-bold text-gray-900">
                           {customer.cashback_balance} ₸
                         </span>
                       </div>
@@ -690,7 +656,7 @@
                           />
                           <div className="flex justify-between text-sm text-gray-600 mt-1">
                             <span>0 ₸</span>
-                            <span className="font-bold text-green-700">{cashbackAmount} ₸</span>
+                            <span className="font-bold text-black">{cashbackAmount} ₸</span>
                             <span>{Math.min(customer.cashback_balance, getCartSubtotal())} ₸</span>
                           </div>
                         </div>
@@ -699,16 +665,16 @@
                   )}
                   
                   {/* Итого */}
-                  <div className="bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl p-4 text-white shadow-lg">
+                  <div className="bg-black rounded-xl p-4 text-white">
                     {useCashback && cashbackAmount > 0 && (
-                      <div className="mb-3 pb-3 border-b border-pink-300">
+                      <div className="mb-3 pb-3 border-b border-gray-700">
                         <div className="flex justify-between text-sm mb-1">
                           <span>{lang === 'kk' ? 'Аралық сома:' : 'Промежуточный итог:'}</span>
                           <span>{getCartSubtotal()} ₸</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span>{lang === 'kk' ? 'Кэшбек жеңілдігі:' : 'Скидка кэшбек:'}</span>
-                          <span className="text-green-300">-{cashbackAmount} ₸</span>
+                          <span className="text-green-400">-{cashbackAmount} ₸</span>
                         </div>
                       </div>
                     )}
@@ -718,20 +684,20 @@
                     </div>
                     <button
                       onClick={submitOrder}
-                      className="w-full bg-white text-pink-600 py-3 rounded-xl font-bold text-lg shadow-md hover:shadow-xl transition-all"
+                      className="w-full bg-white text-black py-3 rounded-xl font-bold text-lg"
                     >
-                      {t.order} 💐
+                      {t.order}
                     </button>
                   </div>
                 </div>
               )}
             </div>
           )}
-          
+
           {/* Заказы */}
           {view === 'orders' && (
             <div className="p-4">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">📋 {t.orders}</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">📋 {t.orders}</h2>
               
               {orders.length === 0 ? (
                 <div className="text-center py-20">
@@ -741,10 +707,10 @@
               ) : (
                 <div className="space-y-3">
                   {orders.map(order => (
-                    <div key={order.id} className="bg-white rounded-xl p-4 shadow-sm">
+                    <div key={order.id} className="bg-white rounded-xl p-4 border border-gray-200">
                       <div className="flex justify-between items-start mb-3">
                         <div>
-                          <p className="font-semibold text-gray-800">
+                          <p className="font-semibold text-gray-900">
                             {lang === 'kk' ? 'Тапсырыс' : 'Заказ'} #{order.id.slice(-6)}
                           </p>
                           <p className="text-sm text-gray-500">
@@ -758,38 +724,59 @@
                           order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
                           'bg-gray-100 text-gray-700'
                         }`}>
-                          {t.status[order.status]}
+                          {order.status === 'pending' ? (lang === 'kk' ? 'Күтілуде' : 'Ожидает') :
+                           order.status === 'processing' ? (lang === 'kk' ? 'Дайындалуда' : 'Готовится') :
+                           order.status === 'ready' ? (lang === 'kk' ? 'Дайын' : 'Готов') :
+                           order.status === 'delivered' ? (lang === 'kk' ? 'Жеткізілді' : 'Доставлен') :
+                           order.status === 'cancelled' ? (lang === 'kk' ? 'Жойылды' : 'Отменён') :
+                           order.status}
                         </span>
                       </div>
-                      <div className="border-t border-gray-100 pt-3">
-                        {order.items?.map((item, idx) => (
-                          <p key={idx} className="text-sm text-gray-600">
-                            • {item.name} x{item.quantity}
-                          </p>
+                      <div className="text-sm text-gray-600 mb-2">
+                        {order.items.map((item, idx) => (
+                          <div key={idx}>
+                            {item.name} x{item.quantity}
+                          </div>
                         ))}
-                        <p className="font-bold text-pink-600 mt-2">
-                          {order.total} ₸
-                        </p>
                       </div>
+                      <p className="font-bold text-gray-900 mt-2">
+                        {order.total} ₸
+                      </p>
                     </div>
                   ))}
                 </div>
               )}
             </div>
           )}
-          
-          {/* Кэшбек */}
-          {view === 'cashback' && (
+
+          {/* Профиль */}
+          {view === 'profile' && (
             <div className="p-4">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">💰 {t.cashback}</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">👤 {t.myProfile}</h2>
               
-              <div className="bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl p-6 text-white text-center mb-4 shadow-lg">
-                <p className="text-lg mb-2">{lang === 'kk' ? 'Сіздің балансыңыз' : 'Ваш баланс'}</p>
+              {/* Информация о клиенте */}
+              <div className="bg-white rounded-xl p-4 border border-gray-200 mb-4">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                    {customer?.first_name?.charAt(0) || '?'}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900">{customer?.first_name || 'Клиент'}</h3>
+                    <p className="text-sm text-gray-500">
+                      {t.totalOrders}: {customer?.total_orders || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Кэшбек */}
+              <div className="bg-gradient-to-r from-gray-800 to-black rounded-xl p-6 text-white text-center mb-4">
+                <p className="text-lg mb-2">{t.balance} {t.cashback}</p>
                 <p className="text-5xl font-bold">{customer?.cashback_balance || 0} ₸</p>
               </div>
               
-              <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
-                <h3 className="font-semibold text-gray-800 mb-2">
+              <div className="bg-white rounded-xl p-4 border border-gray-200 mb-4">
+                <h3 className="font-semibold text-gray-900 mb-2">
                   {lang === 'kk' ? 'Кэшбек қалай жұмыс істейді?' : 'Как работает кэшбек?'}
                 </h3>
                 <ul className="space-y-2 text-sm text-gray-600">
@@ -801,9 +788,9 @@
               
               {/* История транзакций */}
               {cashbackTransactions.length > 0 && (
-                <div className="bg-white rounded-xl p-4 shadow-sm">
-                  <h3 className="font-semibold text-gray-800 mb-3">
-                    {lang === 'kk' ? 'Тарих' : 'История'}
+                <div className="bg-white rounded-xl p-4 border border-gray-200">
+                  <h3 className="font-semibold text-gray-900 mb-3">
+                    {t.history}
                   </h3>
                   <div className="space-y-2">
                     {cashbackTransactions.map(transaction => (
@@ -817,7 +804,7 @@
                             </span>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-800">
+                            <p className="text-sm font-medium text-gray-900">
                               {transaction.type === 'earned' 
                                 ? (lang === 'kk' ? 'Кэшбек жинақталды' : 'Кэшбек начислен')
                                 : (lang === 'kk' ? 'Кэшбек пайдаланылды' : 'Кэшбек использован')}
@@ -844,69 +831,69 @@
               )}
             </div>
           )}
-          
+
           {/* Toast */}
           {toast && (
-            <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 animate-slideDown max-w-sm w-full px-4">
+            <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 animate-fadeIn max-w-sm w-full px-4">
               <div className={`${
-                toast.type === 'success' ? 'bg-pink-600' : 'bg-red-500'
+                toast.type === 'success' ? 'bg-black' : 'bg-red-500'
               } text-white px-6 py-4 rounded-2xl shadow-2xl`}>
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{toast.type === 'success' ? '✅' : '❌'}</span>
-                  <div className="font-medium">{toast.message}</div>
+                  <span className="text-2xl">
+                    {toast.type === 'success' ? '✓' : '✕'}
+                  </span>
+                  <p className="font-medium">{toast.message}</p>
                 </div>
               </div>
             </div>
           )}
-          
-          {/* Навигация */}
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-2xl z-50">
-            <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
-              <button
-                onClick={() => setView('catalog')}
-                className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                  view === 'catalog' ? 'text-pink-600' : 'text-gray-400'
-                }`}
-              >
-                <span className="text-2xl">🏠</span>
-                <span className="text-xs mt-1 font-medium">{t.catalog}</span>
-              </button>
-              
-              <button
-                onClick={() => setView('cart')}
-                className={`flex flex-col items-center justify-center flex-1 h-full transition-colors relative ${
-                  view === 'cart' ? 'text-pink-600' : 'text-gray-400'
-                }`}
-              >
-                <span className="text-2xl">🛒</span>
-                {cart.length > 0 && (
-                  <span className="absolute top-1 right-1/4 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                    {cart.length}
-                  </span>
-                )}
-                <span className="text-xs mt-1 font-medium">{t.cart}</span>
-              </button>
-              
-              <button
-                onClick={() => setView('orders')}
-                className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                  view === 'orders' ? 'text-pink-600' : 'text-gray-400'
-                }`}
-              >
-                <span className="text-2xl">📋</span>
-                <span className="text-xs mt-1 font-medium">{t.orders}</span>
-              </button>
-              
-              <button
-                onClick={() => setView('cashback')}
-                className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                  view === 'cashback' ? 'text-green-600' : 'text-gray-400'
-                }`}
-              >
-                <span className="text-2xl">💰</span>
-                <span className="text-xs mt-1 font-medium">{t.cashback}</span>
-              </button>
-            </div>
+
+          {/* Bottom Navigation */}
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-2 z-20">
+            <button
+              onClick={() => setView('catalog')}
+              className={`flex flex-col items-center gap-1 px-4 py-2 ${
+                view === 'catalog' ? 'text-black' : 'text-gray-400'
+              }`}
+            >
+              <span className="text-2xl">🏠</span>
+              <span className="text-xs font-medium">{t.catalog}</span>
+            </button>
+            
+            <button
+              onClick={() => setView('cart')}
+              className={`flex flex-col items-center gap-1 px-4 py-2 relative ${
+                view === 'cart' ? 'text-black' : 'text-gray-400'
+              }`}
+            >
+              <span className="text-2xl">🛒</span>
+              {cart.length > 0 && (
+                <span className="absolute top-1 right-2 bg-black text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                  {cart.length}
+                </span>
+              )}
+              <span className="text-xs font-medium">{t.cart}</span>
+            </button>
+            
+            <button
+              onClick={() => setView('orders')}
+              className={`flex flex-col items-center gap-1 px-4 py-2 ${
+                view === 'orders' ? 'text-black' : 'text-gray-400'
+              }`}
+            >
+              <span className="text-2xl">📋</span>
+              <span className="text-xs font-medium">{t.orders}</span>
+            </button>
+            
+            <button
+              onClick={() => setView('profile')}
+              className={`flex flex-col items-center gap-1 px-4 py-2 ${
+                view === 'profile' ? 'text-black' : 'text-gray-400'
+              }`}
+            >
+              <span className="text-2xl">👤</span>
+              <span className="text-xs font-medium">{t.profile}</span>
+            </button>
           </div>
         </div>
       );
