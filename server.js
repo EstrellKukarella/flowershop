@@ -605,19 +605,38 @@ async function setupWebhookOnStartup() {
     
     if (currentWebhook === webhookUrl) {
       console.log(`✅ Webhook уже установлен: ${webhookUrl}`);
-      return;
+    } else {
+      console.log(`🔄 Установка webhook: ${webhookUrl}...`);
+      const setResponse = await axios.post(
+        `https://api.telegram.org/bot${BOT_TOKEN}/setWebhook`,
+        { url: webhookUrl }
+      );
+      
+      if (setResponse.data.ok) {
+        console.log(`✅ Webhook успешно установлен!`);
+      } else {
+        console.error(`❌ Ошибка установки webhook:`, setResponse.data);
+      }
     }
     
-    console.log(`🔄 Установка webhook: ${webhookUrl}...`);
-    const setResponse = await axios.post(
-      `https://api.telegram.org/bot${BOT_TOKEN}/setWebhook`,
-      { url: webhookUrl }
+    // Настройка Menu Button для админа
+    console.log(`🔄 Настройка Menu Button для админа...`);
+    const menuButtonResponse = await axios.post(
+      `https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton`,
+      {
+        chat_id: ADMIN_ID,
+        menu_button: {
+          type: 'web_app',
+          text: '⚙️ Админ-панель',
+          web_app: { url: ADMIN_APP_URL }
+        }
+      }
     );
     
-    if (setResponse.data.ok) {
-      console.log(`✅ Webhook успешно установлен!`);
+    if (menuButtonResponse.data.ok) {
+      console.log(`✅ Menu Button настроена для админа: ${ADMIN_APP_URL}`);
     } else {
-      console.error(`❌ Ошибка установки webhook:`, setResponse.data);
+      console.error(`❌ Ошибка настройки Menu Button:`, menuButtonResponse.data);
     }
   } catch (error) {
     console.error(`❌ Ошибка при установке webhook:`, error.message);
