@@ -565,6 +565,80 @@ app.post('/api/setup-webhook', async (req, res) => {
   }
 });
 
+// API: Настройка Menu Button вручную
+app.get('/api/setup-menu-button', async (req, res) => {
+  try {
+    if (!ADMIN_ID) {
+      return res.status(400).json({ 
+        error: 'ADMIN_ID не настроен' 
+      });
+    }
+
+    const results = [];
+
+    // 1. Настройка кнопки для всех пользователей (каталог)
+    console.log(`🔄 Настройка Menu Button для всех пользователей...`);
+    
+    const defaultMenuResponse = await axios.post(
+      `https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton`,
+      {
+        menu_button: {
+          type: 'web_app',
+          text: '🌸 Выбрать букет',
+          web_app: { url: CLIENT_APP_URL }
+        }
+      }
+    );
+
+    if (defaultMenuResponse.data.ok) {
+      console.log(`✅ Menu Button для всех настроена: ${CLIENT_APP_URL}`);
+      results.push({
+        target: 'all_users',
+        success: true,
+        url: CLIENT_APP_URL
+      });
+    }
+
+    // 2. Настройка кнопки для админа (админ-панель)
+    console.log(`🔄 Настройка Menu Button для админа ${ADMIN_ID}...`);
+    
+    const adminMenuResponse = await axios.post(
+      `https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton`,
+      {
+        chat_id: ADMIN_ID,
+        menu_button: {
+          type: 'web_app',
+          text: '⚙️ Админ-панель',
+          web_app: { url: ADMIN_APP_URL }
+        }
+      }
+    );
+
+    if (adminMenuResponse.data.ok) {
+      console.log(`✅ Menu Button для админа настроена: ${ADMIN_APP_URL}`);
+      results.push({
+        target: 'admin',
+        adminId: ADMIN_ID,
+        success: true,
+        url: ADMIN_APP_URL
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Menu Button настроены для всех и админа!',
+      results: results
+    });
+
+  } catch (error) {
+    console.error(`❌ Ошибка настройки Menu Button:`, error.message);
+    res.status(500).json({ 
+      error: 'Ошибка настройки Menu Button',
+      details: error.message 
+    });
+  }
+});
+
 // API: Получить конфиг
 app.get('/api/config', (req, res) => {
   res.json({
