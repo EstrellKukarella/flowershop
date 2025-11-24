@@ -367,7 +367,8 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
 
       const welcomeText = getWelcomeText(firstName, languageCode);
 
-      const keyboard = {
+      // Inline кнопки (в сообщении)
+      const inlineKeyboard = {
         inline_keyboard: [[
           { 
             text: languageCode === 'kk' ? '🌸 Гүл таңдау' : '🌸 Выбрать букет',
@@ -376,9 +377,9 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
         ]]
       };
 
-      // Если админ
+      // Если админ - добавляем кнопку админки в inline
       if (chatId === ADMIN_ID) {
-        keyboard.inline_keyboard.push([
+        inlineKeyboard.inline_keyboard.push([
           { 
             text: '⚙️ Админ-панель',
             web_app: { url: ADMIN_APP_URL }
@@ -386,12 +387,189 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
         ]);
       }
 
+      // Постоянная клавиатура снизу (reply keyboard)
+      const replyKeyboard = {
+        keyboard: [[
+          { text: languageCode === 'kk' ? '🌸 Гүл каталогы' : '🌸 Цветочная', web_app: { url: CLIENT_APP_URL } }
+        ]],
+        resize_keyboard: true,
+        persistent: true
+      };
+
+      // Если админ - добавляем админские кнопки снизу
+      if (chatId === ADMIN_ID) {
+        replyKeyboard.keyboard.push([
+          { text: '⚙️ Админ-панель', web_app: { url: ADMIN_APP_URL } }
+        ]);
+        replyKeyboard.keyboard.push([
+          { text: '📊 Статистика' },
+          { text: '📢 Рассылка' }
+        ]);
+      }
+
+      // Отправляем сообщение с inline кнопками
       await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         chat_id: chatId,
         text: welcomeText,
         parse_mode: 'HTML',
-        reply_markup: keyboard
+        reply_markup: inlineKeyboard
       });
+
+      // Отправляем постоянную клавиатуру снизу
+      await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        chat_id: chatId,
+        text: languageCode === 'kk' ? '✨ Төмендегі батырмаларды пайдаланыңыз:' : '✨ Используйте кнопки ниже:',
+        reply_markup: replyKeyboard
+      });
+    }
+
+    // Обработка кнопки "Статистика" (только для админа)
+    if (update.message && update.message.text === '📊 Статистика') {
+      const chatId = update.message.chat.id;
+      const userId = update.message.from.id;
+
+      if (userId === ADMIN_ID) {
+        try {
+          // Получаем статистику из БД
+          const { data: allOrders } = await supabase
+            .from(getTableName('orders'))
+            .select('*');
+
+          const { data: customers } = await supabase
+            .from(getTableName('customers'))
+            .select('*');
+
+          const { data: products } = await supabase
+            .from(getTableName('products'))
+            .select('*');
+
+          // Подсчёты
+          const totalOrders = allOrders?.length || 0;
+          const totalRevenue = allOrders?.reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0) || 0;
+          
+          const pendingOrders = allOrders?.filter(o => o.status === 'pending').length || 0;
+          const processingOrders = allOrders?.filter(o => o.status === 'processing').length || 0;
+          const readyOrders = allOrders?.filter(o => o.status === 'ready').length || 0;
+          const deliveredOrders = allOrders?.filter(o => o.status === 'delivered').length || 0;
+          const cancelledOrders = allOrders?.filter(o => o.status === 'cancelled').length || 0;
+
+          const totalCustomers = customers?.length || 0;
+          const totalProducts = products?.length || 0;
+          const availableProducts = products?.filter(p => p.available).length || 0;
+
+          // Статистика за сегодня
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const todayOrders = allOrders?.filter(o => new Date(o.created_at) >= today).length || 0;
+          const todayRevenue = allOrders?.filter(o => new Date(o.created_at) >= today)
+            .reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0) || 0;
+
+          // Статистика за неделю
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          const weekOrders = allOrders?.filter(o => new Date(o.created_at) >= weekAgo).length || 0;
+          const weekRevenue = allOrders?.filter(o => new Date(o.created_at) >= weekAgo)
+            .reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0) || 0;
+
+          // Статистика за месяц
+          const monthAgo = new Date();
+          monthAgo.setDate(monthAgo.getDate() - 30);
+          const monthOrders = allOrders?.filter(o => new Date(o.created_at) >= monthAgo).length || 0;
+          const monthRevenue = allOrders?.filter(o => new Date(o.created_at) >= monthAgo)
+            .reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0) || 0;
+
+          // Средний чек
+          const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+
+          const statsMessage = `📊 <b>СТАТИСТИКА ЦВЕТОЧНОЙ ЛАВКИ</b>
+
+━━━━━━━━━━━━━━━━━━━━
+📈 <b>ОБЩАЯ СТАТИСТИКА</b>
+
+💰 Общий доход: <b>${totalRevenue.toFixed(0)} ₸</b>
+📦 Всего заказов: <b>${totalOrders}</b>
+💵 Средний чек: <b>${avgOrderValue} ₸</b>
+👥 Клиентов: <b>${totalCustomers}</b>
+🌸 Товаров: <b>${totalProducts}</b> (в наличии: ${availableProducts})
+
+━━━━━━━━━━━━━━━━━━━━
+📅 <b>ЗА СЕГОДНЯ</b>
+
+📦 Заказов: <b>${todayOrders}</b>
+💰 Доход: <b>${todayRevenue.toFixed(0)} ₸</b>
+
+━━━━━━━━━━━━━━━━━━━━
+📅 <b>ЗА НЕДЕЛЮ</b>
+
+📦 Заказов: <b>${weekOrders}</b>
+💰 Доход: <b>${weekRevenue.toFixed(0)} ₸</b>
+
+━━━━━━━━━━━━━━━━━━━━
+📅 <b>ЗА МЕСЯЦ</b>
+
+📦 Заказов: <b>${monthOrders}</b>
+💰 Доход: <b>${monthRevenue.toFixed(0)} ₸</b>
+
+━━━━━━━━━━━━━━━━━━━━
+📋 <b>СТАТУСЫ ЗАКАЗОВ</b>
+
+⏰ Ожидают: <b>${pendingOrders}</b>
+👨‍🍳 В работе: <b>${processingOrders}</b>
+✅ Готовы: <b>${readyOrders}</b>
+🎉 Доставлено: <b>${deliveredOrders}</b>
+❌ Отменено: <b>${cancelledOrders}</b>
+
+━━━━━━━━━━━━━━━━━━━━
+🕐 Обновлено: ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Almaty' })}`;
+
+          await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            chat_id: chatId,
+            text: statsMessage,
+            parse_mode: 'HTML'
+          });
+        } catch (error) {
+          console.error('Ошибка получения статистики:', error);
+          await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            chat_id: chatId,
+            text: '❌ Ошибка получения статистики'
+          });
+        }
+      } else {
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: chatId,
+          text: '❌ Эта функция доступна только администраторам'
+        });
+      }
+    }
+
+    // Обработка кнопки "Рассылка" (только для админа)
+    if (update.message && update.message.text === '📢 Рассылка') {
+      const chatId = update.message.chat.id;
+      const userId = update.message.from.id;
+
+      if (userId === ADMIN_ID) {
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: chatId,
+          text: `📢 <b>Рассылка сообщений</b>
+
+Отправьте сообщение которое хотите разослать всем клиентам.
+
+Поддерживаются:
+• Текст
+• Фото с текстом
+• Видео с текстом
+
+Сообщение будет отправлено всем клиентам из базы данных.
+
+<i>Функция в разработке. Скоро будет доступна!</i>`,
+          parse_mode: 'HTML'
+        });
+      } else {
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: chatId,
+          text: '❌ Эта функция доступна только администраторам'
+        });
+      }
     }
 
     // Обработка callback (чеки)
