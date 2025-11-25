@@ -247,23 +247,23 @@ app.post('/api/send-order', async (req, res) => {
           .single();
         
         if (shopSettings?.contact_address) {
-          confirmMessage += `📍 <b>Адрес:</b> ${shopSettings.contact_address}\n`;
+          confirmMessage += `📍 <b>Адрес / Мекенжай:</b> ${shopSettings.contact_address}\n`;
         }
         if (shopSettings?.working_hours) {
-          confirmMessage += `⏰ <b>Режим работы:</b> ${shopSettings.working_hours}\n`;
+          confirmMessage += `⏰ <b>Режим работы / Жұмыс уақыты:</b> ${shopSettings.working_hours}\n`;
         }
         if (shopSettings?.contact_phone) {
-          confirmMessage += `📞 <b>Телефон:</b> ${shopSettings.contact_phone}\n`;
+          confirmMessage += `📞 <b>Телефон / Байланыс:</b> ${shopSettings.contact_phone}\n`;
         }
         
-        confirmMessage += "\nМы свяжемся с вами когда заказ будет готов!\n";
-        confirmMessage += "Тапсырыс дайын болғанда сізге хабарласамыз!\n";
+        confirmMessage += "\n✅ Мы свяжемся с вами когда заказ будет готов!\n";
+        confirmMessage += "✅ Тапсырыс дайын болғанда сізге хабарласамыз!\n";
       } else {
         confirmMessage += `🚚 <b>Доставка / Жеткізу</b>\n`;
         confirmMessage += `📍 ${deliveryAddress}\n`;
         confirmMessage += `📅 ${deliveryDate} ⏰ ${deliveryTime}\n\n`;
-        confirmMessage += "Мы свяжемся с вами перед доставкой!\n";
-        confirmMessage += "Жеткізу алдында сізге хабарласамыз!\n";
+        confirmMessage += "✅ Мы свяжемся с вами перед доставкой!\n";
+        confirmMessage += "✅ Жеткізу алдында сізге хабарласамыз!\n";
       }
       
       if (!paymentEnabled) {
