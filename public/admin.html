@@ -645,6 +645,29 @@
                     value={settings.contact_address || ''}
                     onChange={(e) => setSettings({...settings, contact_address: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    placeholder="ул. Абая, 10"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Instagram</label>
+                  <input
+                    type="text"
+                    value={settings.instagram || ''}
+                    onChange={(e) => setSettings({...settings, instagram: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    placeholder="@your_flower_shop"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Режим работы</label>
+                  <input
+                    type="text"
+                    value={settings.working_hours || ''}
+                    onChange={(e) => setSettings({...settings, working_hours: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    placeholder="Пн-Вс: 9:00 - 21:00"
                   />
                 </div>
 
