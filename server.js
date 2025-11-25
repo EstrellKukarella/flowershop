@@ -384,7 +384,8 @@ app.post('/api/send-photo-prompt', async (req, res) => {
     }
 
     // Сохраняем ожидание фото от админа
-    const key = `photo_${ADMIN_ID}_${orderId}`;
+    // ВАЖНО: добавляем photoType в ключ чтобы можно было отправить букет И доставку!
+    const key = `photo_${ADMIN_ID}_${orderId}_${photoType}`;
     pendingReceipts.set(key, {
       orderId,
       customerId: telegramUserId,
@@ -413,7 +414,7 @@ app.post('/api/send-photo-prompt', async (req, res) => {
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[
-          { text: '❌ Отменить', callback_data: `cancel_photo_${orderId}` }
+          { text: '❌ Отменить', callback_data: `cancel_photo_${orderId}_${photoType}` }
         ]]
       }
     });
@@ -795,10 +796,16 @@ ${topProducts.map((p, i) => `${i + 1}. ${p[0]}: ${p[1].count} шт (${p[1].reven
 
       // Отмена отправки фото
       if (data.startsWith('cancel_photo_')) {
-        const orderId = data.replace('cancel_photo_', '');
+        // Формат: cancel_photo_12345_bouquet
+        const parts = data.replace('cancel_photo_', '').split('_');
+        const orderId = parts[0];
+        const photoType = parts[1]; // bouquet или delivery
         
         // Удаляем ожидание фото
-        pendingReceipts.delete(`photo_${ADMIN_ID}_${orderId}`);
+        const key = `photo_${ADMIN_ID}_${orderId}_${photoType}`;
+        pendingReceipts.delete(key);
+        
+        console.log('❌ Отменено:', key);
         
         await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
           callback_query_id: callbackQuery.id,
