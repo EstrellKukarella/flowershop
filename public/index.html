@@ -261,7 +261,7 @@
         }
         
         try {
-          const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          const orderId = Math.floor(10000 + Math.random() * 90000).toString(); // 5-значный номер: 10000-99999
           const userId = tg?.initDataUnsafe?.user?.id;
           const username = tg?.initDataUnsafe?.user?.username;
           
@@ -689,40 +689,6 @@
                       {t.order}
                     </button>
                   </div>
-
-                  {/* Кнопки оплаты */}
-                  {settings?.payment_enabled && (
-                    <div className="bg-white rounded-xl p-4 border border-gray-200">
-                      <p className="text-sm text-gray-600 mb-3 text-center">
-                        {lang === 'kk' ? '💳 Төлем әдісін таңдаңыз:' : '💳 Выберите способ оплаты:'}
-                      </p>
-                      <div className="space-y-2">
-                        {settings.kaspi_link && (
-                          <a
-                            href={settings.kaspi_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block w-full bg-gradient-to-r from-red-500 to-pink-500 text-white py-3 rounded-xl font-bold text-center"
-                          >
-                            💳 Kaspi {lang === 'kk' ? 'арқылы төлеу' : 'оплата'}
-                          </a>
-                        )}
-                        {settings.kaspi_phone && (
-                          <a
-                            href={`https://kaspi.kz/pay/${settings.kaspi_phone}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block w-full bg-gradient-to-r from-red-500 to-pink-500 text-white py-3 rounded-xl font-bold text-center"
-                          >
-                            📱 Kaspi {settings.kaspi_phone}
-                          </a>
-                        )}
-                        <button className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-medium border-2 border-gray-300">
-                          💵 {lang === 'kk' ? 'Қолма-қол' : 'Наличными'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
@@ -745,7 +711,7 @@
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <p className="font-semibold text-gray-900">
-                            {lang === 'kk' ? 'Тапсырыс' : 'Заказ'} #{order.id.slice(-6)}
+                            {lang === 'kk' ? 'Тапсырыс' : 'Заказ'} #{order.id}
                           </p>
                           <p className="text-sm text-gray-500">
                             {new Date(order.created_at).toLocaleDateString('ru-RU')}
