@@ -83,7 +83,8 @@
           delivery: 'Доставка',
           address: 'Адрес доставки',
           deliveryDate: 'Дата доставки',
-          deliveryTime: 'Время доставки'
+          deliveryTime: 'Время доставки',
+          newItems: 'Новинки'
         },
         kk: {
           catalog: 'Каталог',
@@ -112,7 +113,8 @@
           delivery: 'Жеткізу',
           address: 'Жеткізу мекенжайы',
           deliveryDate: 'Жеткізу күні',
-          deliveryTime: 'Жеткізу уақыты'
+          deliveryTime: 'Жеткізу уақыты',
+          newItems: 'Жаңалықтар'
         }
       };
 
@@ -163,7 +165,19 @@
 
           // Извлекаем уникальные категории
           const uniqueCategories = [...new Set(productsData?.map(p => p.category).filter(Boolean))];
-          setCategories(uniqueCategories);
+          
+          // Проверяем есть ли товары младше 3 дней
+          const threeDaysAgo = new Date();
+          threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+          
+          const hasNewItems = productsData?.some(p => new Date(p.created_at) >= threeDaysAgo);
+          
+          // Если есть новинки - добавляем категорию в начало
+          if (hasNewItems) {
+            setCategories(['new', ...uniqueCategories]);
+          } else {
+            setCategories(uniqueCategories);
+          }
 
           // Загрузка настроек
           const { data: settingsData } = await client
@@ -374,6 +388,12 @@
 
       const filteredProducts = selectedCategory === 'all' 
         ? products 
+        : selectedCategory === 'new'
+        ? (() => {
+            const threeDaysAgo = new Date();
+            threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+            return products.filter(p => new Date(p.created_at) >= threeDaysAgo);
+          })()
         : products.filter(p => p.category === selectedCategory);
       
       // Дополнительная фильтрация по поиску
@@ -450,13 +470,26 @@
                     </div>
                   )}
                   
-                  {selectedProduct.badge && (
-                    <div className="inline-block bg-black text-white text-xs px-3 py-1 rounded-full mb-3">
-                      {selectedProduct.badge === 'new' ? (lang === 'kk' ? '🎉 Жаңа' : '🎉 Новинка') :
-                       selectedProduct.badge === 'hit' ? (lang === 'kk' ? '⭐ Танымал' : '⭐ Хит') :
-                       selectedProduct.badge}
-                    </div>
-                  )}
+                  {/* Бейдж новинка или из БД */}
+                  {(() => {
+                    const threeDaysAgo = new Date();
+                    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+                    const isNew = new Date(selectedProduct.created_at) >= threeDaysAgo;
+                    
+                    const badge = isNew ? 'new' : selectedProduct.badge;
+                    
+                    return badge ? (
+                      <div className={`inline-block text-xs px-3 py-1 rounded-full mb-3 ${
+                        badge === 'new' 
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg' 
+                          : 'bg-black text-white'
+                      }`}>
+                        {badge === 'new' ? (lang === 'kk' ? '🎉 Жаңа' : '🎉 Новинка') :
+                         badge === 'hit' ? (lang === 'kk' ? '⭐ Танымал' : '⭐ Хит') :
+                         badge}
+                      </div>
+                    ) : null;
+                  })()}
                   
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">
                     {lang === 'kk' ? (selectedProduct.name_kk || selectedProduct.name) : selectedProduct.name}
@@ -503,7 +536,7 @@
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder={lang === 'kk' ? 'Іздеу...' : 'Поиск...'}
+                    placeholder={lang === 'kk' ? '🔍 Іздеу...' : '🔍 Поиск...'}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-xl focus:outline-none focus:border-black focus:ring-2 focus:ring-black focus:ring-opacity-20"
@@ -540,11 +573,15 @@
                     onClick={() => setSelectedCategory(category)}
                     className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-all ${
                       selectedCategory === category
-                        ? 'bg-black text-white'
+                        ? category === 'new'
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
+                          : 'bg-black text-white'
+                        : category === 'new'
+                        ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 text-green-700'
                         : 'bg-white border border-gray-300 text-gray-700'
                     }`}
                   >
-                    {category}
+                    {category === 'new' ? `🎉 ${t.newItems}` : category}
                   </button>
                 ))}
               </div>
@@ -577,13 +614,26 @@
                           🌺
                         </div>
                       )}
-                      {product.badge && (
-                        <div className="absolute top-2 right-2 bg-black text-white text-xs px-2 py-1 rounded-full font-bold">
-                          {product.badge === 'new' ? (lang === 'kk' ? '🎉 Жаңа' : '🎉 Новинка') :
-                           product.badge === 'hit' ? (lang === 'kk' ? '⭐ Танымал' : '⭐ Хит') :
-                           product.badge}
-                        </div>
-                      )}
+                      {/* Бейдж новинка или из БД */}
+                      {(() => {
+                        const threeDaysAgo = new Date();
+                        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+                        const isNew = new Date(product.created_at) >= threeDaysAgo;
+                        
+                        const badge = isNew ? 'new' : product.badge;
+                        
+                        return badge ? (
+                          <div className={`absolute top-2 right-2 text-xs px-2 py-1 rounded-full font-bold ${
+                            badge === 'new' 
+                              ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg' 
+                              : 'bg-black text-white'
+                          }`}>
+                            {badge === 'new' ? (lang === 'kk' ? '🎉 Жаңа' : '🎉 Новинка') :
+                             badge === 'hit' ? (lang === 'kk' ? '⭐ Танымал' : '⭐ Хит') :
+                             badge}
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
                     
                     <div className="p-3">
