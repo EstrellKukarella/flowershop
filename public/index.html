@@ -69,7 +69,7 @@
           addToCart: 'В корзину',
           empty: 'Пусто',
           noOrders: 'Нет заказов',
-          orderSuccess: 'Заказ оформлен!',
+          orderSuccess: 'Заказ оформлен! Информация об оплате придёт в чат 💬',
           details: 'Подробнее',
           back: 'Назад',
           cashback: 'Кэшбек',
@@ -98,7 +98,7 @@
           addToCart: 'Себетке',
           empty: 'Бос',
           noOrders: 'Тапсырыстар жоқ',
-          orderSuccess: 'Тапсырыс қабылданды!',
+          orderSuccess: 'Тапсырыс қабылданды! Төлем туралы ақпарат чатқа келеді 💬',
           details: 'Толығырақ',
           back: 'Артқа',
           cashback: 'Кэшбек',
@@ -652,10 +652,13 @@
                               id="customerPhone"
                               type="tel"
                               placeholder="777 123 45 67"
-                              maxLength="10"
                               className="w-full pl-14 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-black focus:ring-2 focus:ring-black focus:ring-opacity-20 text-lg"
                               onInput={(e) => {
                                 let value = e.target.value.replace(/\D/g, '');
+                                // Ограничиваем 10 цифрами
+                                value = value.slice(0, 10);
+                                
+                                // Форматируем с пробелами
                                 if (value.length > 3 && value.length <= 6) {
                                   value = value.slice(0, 3) + ' ' + value.slice(3);
                                 } else if (value.length > 6 && value.length <= 8) {
