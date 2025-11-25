@@ -468,8 +468,36 @@
                       </div>
                     )}
 
+                    {/* Детали оплаты */}
+                    {order.cashback_used && order.cashback_used > 0 ? (
+                      <div className="mb-3 bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-lg border border-green-200">
+                        <p className="font-semibold text-gray-900 mb-2">💰 Оплата с кэшбеком</p>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between text-gray-700">
+                            <span>Сумма товаров:</span>
+                            <span className="font-medium">{order.subtotal} ₸</span>
+                          </div>
+                          <div className="flex justify-between text-green-700">
+                            <span>💰 Оплачено кэшбеком:</span>
+                            <span className="font-bold">-{order.cashback_used} ₸</span>
+                          </div>
+                          <div className="flex justify-between text-gray-900 pt-1 border-t border-green-200">
+                            <span className="font-semibold">К оплате деньгами:</span>
+                            <span className="font-bold text-lg">{order.total} ₸</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mb-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">💵 К оплате:</span>
+                          <span className="font-bold text-gray-900 text-lg">{order.total} ₸</span>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-                      <span className="font-bold text-gray-900">Итого: {order.total} ₸</span>
+                      <span className="text-sm text-gray-500">Статус заказа:</span>
                       <select
                         value={order.status}
                         onChange={(e) => updateOrderStatus(order.id, e.target.value)}
