@@ -424,7 +424,7 @@
                           {new Date(order.created_at).toLocaleString('ru-RU')}
                         </p>
                         <p className="text-sm text-gray-700 mt-1">
-                          👤 {order.customer_name} | 📞 {order.customer_phone}
+                          👤 {order.customer_name} | 📞 +7{order.customer_phone}
                         </p>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -448,6 +448,19 @@
                         <div key={idx}>• {item.name} x{item.quantity} - {item.price * item.quantity} ₸</div>
                       ))}
                     </div>
+
+                    {/* Информация о доставке */}
+                    {order.delivery_type === 'delivery' ? (
+                      <div className="mb-3 text-sm bg-blue-50 p-3 rounded-lg border border-blue-200">
+                        <p className="font-semibold text-blue-900 mb-1">🚚 Доставка</p>
+                        <p className="text-blue-800">📍 {order.delivery_address}</p>
+                        <p className="text-blue-800">📅 {order.delivery_date} ⏰ {order.delivery_time}</p>
+                      </div>
+                    ) : (
+                      <div className="mb-3 text-sm bg-gray-50 p-2 rounded">
+                        🏪 Самовывоз
+                      </div>
+                    )}
 
                     {order.comment && (
                       <div className="mb-3 text-sm text-gray-600 bg-gray-50 p-2 rounded">
