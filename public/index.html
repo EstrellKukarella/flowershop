@@ -114,7 +114,7 @@
           address: 'Жеткізу мекенжайы',
           deliveryDate: 'Жеткізу күні',
           deliveryTime: 'Жеткізу уақыты',
-          newItems: 'Жаңа'
+          newItems: 'Жаңалықтар'
         }
       };
 
@@ -556,7 +556,7 @@
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder={lang === 'kk' ? 'Іздеу...' : 'Поиск...'}
+                    placeholder={lang === 'kk' ? '🔍 Іздеу...' : '🔍 Поиск...'}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-xl focus:outline-none focus:border-black focus:ring-2 focus:ring-black focus:ring-opacity-20"
@@ -994,6 +994,69 @@
                   </div>
                 </div>
               )}
+
+              {/* О магазине */}
+              <div className="bg-white rounded-xl p-4 border border-gray-200 mt-4">
+                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  🏪 {lang === 'kk' ? 'Дүкен туралы' : 'О магазине'}
+                </h3>
+                <div className="space-y-3 text-sm">
+                  {settings?.contact_address && (
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl">📍</span>
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {lang === 'kk' ? 'Мекенжай' : 'Адрес'}
+                        </p>
+                        <p className="text-gray-600">{settings.contact_address}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {settings?.working_hours && (
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl">⏰</span>
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {lang === 'kk' ? 'Жұмыс уақыты' : 'Режим работы'}
+                        </p>
+                        <p className="text-gray-600">{settings.working_hours}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {settings?.contact_phone && (
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl">📞</span>
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {lang === 'kk' ? 'Телефон' : 'Телефон'}
+                        </p>
+                        <a href={`tel:${settings.contact_phone}`} className="text-gray-600 hover:text-black">
+                          {settings.contact_phone}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {settings?.instagram && (
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl">📷</span>
+                      <div>
+                        <p className="font-medium text-gray-900">Instagram</p>
+                        <a 
+                          href={`https://instagram.com/${settings.instagram.replace('@', '')}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-gray-600 hover:text-black"
+                        >
+                          {settings.instagram}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
