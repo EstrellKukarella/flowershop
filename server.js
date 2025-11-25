@@ -160,13 +160,20 @@ app.post('/api/send-order', async (req, res) => {
       message += `• ${item.name} x${item.quantity} = ${item.price * item.quantity} ₸\n`;
     });
     
+    // Детальная информация об оплате
+    message += "\n━━━━━━━━━━━━━━━━━━━━";
+    message += "\n<b>💳 ОПЛАТА:</b>\n";
+    
     if (cashbackUsed && cashbackUsed > 0) {
-      message += `\n<b>Промежуточный итог:</b> ${subtotal} ₸`;
-      message += `\n<b>💰 Использован кэшбек:</b> -${cashbackUsed} ₸`;
-      message += `\n<b>💰 К оплате: ${total} ₸</b>`;
+      message += `\n<b>Сумма товаров:</b> ${subtotal} ₸`;
+      message += `\n<b>💰 Оплачено кэшбеком:</b> <code>-${cashbackUsed} ₸</code>`;
+      message += `\n<b>💵 К оплате деньгами:</b> <code>${total} ₸</code>`;
+      message += `\n\n✅ Клиент использовал кэшбек`;
     } else {
-      message += `\n<b>💰 Итого: ${total} ₸</b>`;
+      message += `\n<b>💵 К оплате:</b> <code>${total} ₸</code>`;
+      message += `\n\n💰 Кэшбек не использован`;
     }
+    message += "\n━━━━━━━━━━━━━━━━━━━━";
 
     if (paymentEnabled) {
       message += `\n\n⏰ <b>Статус:</b> Ожидает оплаты`;
