@@ -130,7 +130,7 @@ app.post('/api/send-order', async (req, res) => {
 
     // Сообщение админу
     let message = "🆕 <b>НОВЫЙ ЗАКАЗ!</b>\n\n";
-    message += `📋 Заказ #${orderId.slice(-6)}\n`;
+    message += `📋 Заказ #${orderId}\n`;
     message += `📅 ${formatDateTimeAstana(date)}\n\n`;
     
     message += "<b>👤 Клиент:</b>\n";
@@ -167,7 +167,7 @@ app.post('/api/send-order', async (req, res) => {
     // Если включены платежи
     if (paymentEnabled && telegramUserId) {
       let paymentMessage = "💳 <b>Реквизиты для оплаты / Төлем деректемелері</b>\n\n";
-      paymentMessage += `📋 Заказ / Тапсырыс #${orderId.slice(-6)}\n`;
+      paymentMessage += `📋 Заказ / Тапсырыс #${orderId}\n`;
       paymentMessage += `💰 Сумма / Сомасы: <b>${total} ₸</b>\n\n`;
       
       if (kaspiPhone) {
@@ -201,7 +201,7 @@ app.post('/api/send-order', async (req, res) => {
 
       pendingReceipts.set(orderId, {
         userId: telegramUserId,
-        orderNumber: orderId.slice(-6),
+        orderNumber: orderId, // Полный номер
         total: total,
         customerName: customerName
       });
@@ -615,7 +615,7 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
         if (order && order.telegram_user_id) {
           await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             chat_id: order.telegram_user_id,
-            text: `✅ <b>Оплата подтверждена!</b>\n\n📋 Заказ #${orderId.slice(-6)}\n\nМы приняли ваш заказ в работу! 🌸`,
+            text: `✅ <b>Оплата подтверждена!</b>\n\n📋 Заказ #${orderId}\n\nМы приняли ваш заказ в работу! 🌸`,
             parse_mode: 'HTML'
           });
         }
@@ -648,7 +648,7 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
           
           await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             chat_id: order.telegram_user_id,
-            text: `❌ <b>Чек не принят</b>\n\n📋 Заказ #${orderId.slice(-6)}\n\nПожалуйста, отправьте корректный чек.\n\n🇰🇿 <b>Чек қабылданбады</b>\n\nДұрыс чекті жіберіңіз.`,
+            text: `❌ <b>Чек не принят</b>\n\n📋 Заказ #${orderId}\n\nПожалуйста, отправьте корректный чек.\n\n🇰🇿 <b>Чек қабылданбады</b>\n\nДұрыс чекті жіберіңіз.`,
             parse_mode: 'HTML',
             reply_markup: {
               inline_keyboard: [[
