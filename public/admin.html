@@ -75,7 +75,7 @@
           const configResponse = await fetch('/api/config');
           const config = await configResponse.json();
           
-          const { createClient } = supabase;
+          const { createClient } = window.supabase;
           const client = createClient(config.supabaseUrl, config.supabaseKey);
           
           setSupabase(client);
