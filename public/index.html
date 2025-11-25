@@ -51,6 +51,7 @@
       const [toast, setToast] = useState(null);
       const [loading, setLoading] = useState(true);
       const [supabase, setSupabase] = useState(null);
+      const [showCashbackHistory, setShowCashbackHistory] = useState(false);
 
       const tg = window.Telegram?.WebApp;
 
@@ -994,69 +995,6 @@
                   </div>
                 </div>
               )}
-
-              {/* О магазине */}
-              <div className="bg-white rounded-xl p-4 border border-gray-200 mt-4">
-                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  🏪 {lang === 'kk' ? 'Дүкен туралы' : 'О магазине'}
-                </h3>
-                <div className="space-y-3 text-sm">
-                  {settings?.contact_address && (
-                    <div className="flex items-start gap-3">
-                      <span className="text-xl">📍</span>
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {lang === 'kk' ? 'Мекенжай' : 'Адрес'}
-                        </p>
-                        <p className="text-gray-600">{settings.contact_address}</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {settings?.working_hours && (
-                    <div className="flex items-start gap-3">
-                      <span className="text-xl">⏰</span>
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {lang === 'kk' ? 'Жұмыс уақыты' : 'Режим работы'}
-                        </p>
-                        <p className="text-gray-600">{settings.working_hours}</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {settings?.contact_phone && (
-                    <div className="flex items-start gap-3">
-                      <span className="text-xl">📞</span>
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {lang === 'kk' ? 'Телефон' : 'Телефон'}
-                        </p>
-                        <a href={`tel:${settings.contact_phone}`} className="text-gray-600 hover:text-black">
-                          {settings.contact_phone}
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {settings?.instagram && (
-                    <div className="flex items-start gap-3">
-                      <span className="text-xl">📷</span>
-                      <div>
-                        <p className="font-medium text-gray-900">Instagram</p>
-                        <a 
-                          href={`https://instagram.com/${settings.instagram.replace('@', '')}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-gray-600 hover:text-black"
-                        >
-                          {settings.instagram}
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
           )}
 
@@ -1163,46 +1101,122 @@
               {/* История транзакций */}
               {cashbackTransactions.length > 0 && (
                 <div className="bg-white rounded-xl p-4 border border-gray-200">
-                  <h3 className="font-semibold text-gray-900 mb-3">
-                    {t.history}
-                  </h3>
-                  <div className="space-y-2">
-                    {cashbackTransactions.map(transaction => (
-                      <div key={transaction.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            transaction.type === 'earned' ? 'bg-green-100' : 'bg-red-100'
-                          }`}>
-                            <span className="text-xl">
-                              {transaction.type === 'earned' ? '💰' : '🛒'}
-                            </span>
+                  <button 
+                    onClick={() => setShowCashbackHistory(!showCashbackHistory)}
+                    className="w-full flex items-center justify-between"
+                  >
+                    <h3 className="font-semibold text-gray-900">
+                      {t.history}
+                    </h3>
+                    <span className="text-2xl transform transition-transform duration-200" style={{
+                      transform: showCashbackHistory ? 'rotate(180deg)' : 'rotate(0deg)'
+                    }}>
+                      ▼
+                    </span>
+                  </button>
+                  
+                  {showCashbackHistory && (
+                    <div className="space-y-2 mt-3">
+                      {cashbackTransactions.map(transaction => (
+                        <div key={transaction.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              transaction.type === 'earned' ? 'bg-green-100' : 'bg-red-100'
+                            }`}>
+                              <span className="text-xl">
+                                {transaction.type === 'earned' ? '💰' : '🛒'}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {transaction.type === 'earned' 
+                                  ? (lang === 'kk' ? 'Кэшбек жинақталды' : 'Кэшбек начислен')
+                                  : (lang === 'kk' ? 'Кэшбек пайдаланылды' : 'Кэшбек использован')}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {new Date(transaction.created_at).toLocaleDateString('ru-RU')}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              {transaction.type === 'earned' 
-                                ? (lang === 'kk' ? 'Кэшбек жинақталды' : 'Кэшбек начислен')
-                                : (lang === 'kk' ? 'Кэшбек пайдаланылды' : 'Кэшбек использован')}
+                          <div className="text-right">
+                            <p className={`font-bold ${
+                              transaction.type === 'earned' ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {transaction.type === 'earned' ? '+' : '-'}{transaction.amount} ₸
                             </p>
-                            <p className="text-xs text-gray-500">
-                              {new Date(transaction.created_at).toLocaleDateString('ru-RU')}
+                            <p className="text-xs text-gray-400">
+                              {lang === 'kk' ? 'Баланс:' : 'Баланс:'} {transaction.balance_after} ₸
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className={`font-bold ${
-                            transaction.type === 'earned' ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {transaction.type === 'earned' ? '+' : '-'}{transaction.amount} ₸
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {lang === 'kk' ? 'Баланс:' : 'Баланс:'} {transaction.balance_after} ₸
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* О магазине */}
+              <div className="bg-white rounded-xl p-4 border border-gray-200 mt-4">
+                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  🏪 {lang === 'kk' ? 'Дүкен туралы' : 'О магазине'}
+                </h3>
+                <div className="space-y-3 text-sm">
+                  {settings?.contact_address && (
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl">📍</span>
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {lang === 'kk' ? 'Мекенжай' : 'Адрес'}
+                        </p>
+                        <p className="text-gray-600">{settings.contact_address}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {settings?.working_hours && (
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl">⏰</span>
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {lang === 'kk' ? 'Жұмыс уақыты' : 'Режим работы'}
+                        </p>
+                        <p className="text-gray-600">{settings.working_hours}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {settings?.contact_phone && (
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl">📞</span>
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {lang === 'kk' ? 'Телефон' : 'Телефон'}
+                        </p>
+                        <a href={`tel:${settings.contact_phone}`} className="text-gray-600 hover:text-black">
+                          {settings.contact_phone}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {settings?.instagram && (
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl">📷</span>
+                      <div>
+                        <p className="font-medium text-gray-900">Instagram</p>
+                        <a 
+                          href={`https://instagram.com/${settings.instagram.replace('@', '')}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-gray-600 hover:text-black"
+                        >
+                          {settings.instagram}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
