@@ -113,6 +113,10 @@ app.post('/api/send-order', async (req, res) => {
       customerName, 
       customerPhone, 
       customerComment,
+      deliveryType,
+      deliveryAddress,
+      deliveryDate,
+      deliveryTime,
       telegramUserId, 
       telegramUsername, 
       items, 
@@ -135,10 +139,21 @@ app.post('/api/send-order', async (req, res) => {
     
     message += "<b>👤 Клиент:</b>\n";
     message += `Имя: ${customerName}\n`;
-    message += `Телефон: ${customerPhone}\n`;
+    message += `Телефон: +7${customerPhone}\n`;
     if (telegramUsername) message += `Telegram: @${telegramUsername}\n`;
     if (telegramUserId) message += `ID: ${telegramUserId}\n`;
-    if (customerComment) message += `\nКомментарий: ${customerComment}\n`;
+    
+    // Информация о доставке
+    if (deliveryType === 'delivery') {
+      message += `\n<b>🚚 Доставка:</b>\n`;
+      message += `📍 Адрес: ${deliveryAddress}\n`;
+      message += `📅 Дата: ${deliveryDate}\n`;
+      message += `⏰ Время: ${deliveryTime}\n`;
+    } else {
+      message += `\n<b>🏪 Самовывоз</b>\n`;
+    }
+    
+    if (customerComment) message += `\n💬 Комментарий: ${customerComment}\n`;
     
     message += "\n<b>💐 Товары:</b>\n";
     items.forEach(item => {
