@@ -269,21 +269,35 @@ app.post('/api/notify-status', async (req, res) => {
           const cashbackAmount = Math.floor(order.total * 0.05); // 5% кэшбека
           
           // Получаем текущий баланс клиента
-          const { data: customer } = await supabase
+          let { data: customer } = await supabase
             .from(getTableName('customers'))
-            .select('cashback_balance')
+            .select('cashback_balance, total_orders')
             .eq('telegram_user_id', userId)
             .single();
 
+          // Если клиента нет - создаём
+          if (!customer) {
+            await supabase
+              .from(getTableName('customers'))
+              .insert({
+                telegram_user_id: userId,
+                cashback_balance: 0,
+                total_orders: 0
+              });
+            
+            customer = { cashback_balance: 0, total_orders: 0 };
+          }
+
           const currentBalance = customer?.cashback_balance || 0;
+          const currentTotalOrders = customer?.total_orders || 0;
           const newBalance = currentBalance + cashbackAmount;
 
-          // Обновляем баланс
+          // Обновляем баланс и счётчик заказов
           await supabase
             .from(getTableName('customers'))
             .update({ 
               cashback_balance: newBalance,
-              total_orders: supabase.raw('total_orders + 1')
+              total_orders: currentTotalOrders + 1
             })
             .eq('telegram_user_id', userId);
 
