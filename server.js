@@ -229,6 +229,55 @@ app.post('/api/send-order', async (req, res) => {
       });
     }
 
+    // Отправляем подтверждение клиенту (всегда, даже если нет оплаты)
+    if (telegramUserId) {
+      let confirmMessage = "✅ <b>Заказ оформлен! / Тапсырыс рәсімделді!</b>\n\n";
+      confirmMessage += `📋 Заказ / Тапсырыс #${orderId}\n`;
+      confirmMessage += `💰 Сумма / Сомасы: <b>${total} ₸</b>\n\n`;
+      
+      // Если самовывоз - показываем адрес магазина
+      if (deliveryType === 'pickup') {
+        confirmMessage += "🏪 <b>Самовывоз / Өзім алу</b>\n\n";
+        
+        // Загружаем настройки из БД
+        const { data: shopSettings } = await supabase
+          .from('flowers_settings')
+          .select('contact_address, working_hours, contact_phone')
+          .eq('id', 1)
+          .single();
+        
+        if (shopSettings?.contact_address) {
+          confirmMessage += `📍 <b>Адрес:</b> ${shopSettings.contact_address}\n`;
+        }
+        if (shopSettings?.working_hours) {
+          confirmMessage += `⏰ <b>Режим работы:</b> ${shopSettings.working_hours}\n`;
+        }
+        if (shopSettings?.contact_phone) {
+          confirmMessage += `📞 <b>Телефон:</b> ${shopSettings.contact_phone}\n`;
+        }
+        
+        confirmMessage += "\nМы свяжемся с вами когда заказ будет готов!\n";
+        confirmMessage += "Тапсырыс дайын болғанда сізге хабарласамыз!\n";
+      } else {
+        confirmMessage += `🚚 <b>Доставка / Жеткізу</b>\n`;
+        confirmMessage += `📍 ${deliveryAddress}\n`;
+        confirmMessage += `📅 ${deliveryDate} ⏰ ${deliveryTime}\n\n`;
+        confirmMessage += "Мы свяжемся с вами перед доставкой!\n";
+        confirmMessage += "Жеткізу алдында сізге хабарласамыз!\n";
+      }
+      
+      if (!paymentEnabled) {
+        confirmMessage += "\nИнформация об оплате придёт в чат 💬\n";
+        confirmMessage += "Төлем туралы ақпарат чатқа келеді 💬";
+        
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: telegramUserId,
+          text: confirmMessage,
+          parse_mode: 'HTML'
+        });
+      }
+    }
+
     res.json({ success: true, message: 'Заказ успешно отправлен' });
 
   } catch (error) {
