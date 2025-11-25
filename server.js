@@ -377,6 +377,107 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
   try {
     const update = req.body;
 
+    // ===== ОБРАБОТКА РАССЫЛКИ (В ПЕРВУЮ ОЧЕРЕДЬ!) =====
+    if (update.message && pendingReceipts.has(`broadcast_${update.message.from.id}`)) {
+      const userId = update.message.from.id;
+      
+      if (userId !== ADMIN_ID) return res.json({ ok: true });
+      
+      // Игнорируем системные кнопки и команды
+      const ignoredTexts = ['📢 Рассылка', '📊 Статистика', '⚙️ Админ-панель'];
+      if (update.message.text && ignoredTexts.includes(update.message.text)) {
+        return res.json({ ok: true });
+      }
+      
+      // Отмена
+      if (update.message.text === '/cancel') {
+        pendingReceipts.delete(`broadcast_${userId}`);
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: userId,
+          text: '❌ Рассылка отменена'
+        });
+        return res.json({ ok: true });
+      }
+      
+      // Проверяем что сообщение не пустое
+      if (!update.message.photo && !update.message.video && (!update.message.text || update.message.text.trim() === '')) {
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: userId,
+          text: '❌ Отправьте непустое сообщение или нажмите /cancel для отмены'
+        });
+        return res.json({ ok: true });
+      }
+      
+      // Получаем всех клиентов
+      const { data: customers } = await supabase
+        .from(getTableName('customers'))
+        .select('telegram_user_id');
+      
+      if (!customers || customers.length === 0) {
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: userId,
+          text: '❌ Нет клиентов в базе данных'
+        });
+        pendingReceipts.delete(`broadcast_${userId}`);
+        return res.json({ ok: true });
+      }
+      
+      let successCount = 0;
+      let failCount = 0;
+      
+      // Отправляем сообщение
+      for (const customer of customers) {
+        try {
+          if (update.message.photo) {
+            // Отправляем фото
+            const photo = update.message.photo[update.message.photo.length - 1];
+            await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+              chat_id: customer.telegram_user_id,
+              photo: photo.file_id,
+              caption: update.message.caption || ''
+            });
+          } else if (update.message.video) {
+            // Отправляем видео
+            await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
+              chat_id: customer.telegram_user_id,
+              video: update.message.video.file_id,
+              caption: update.message.caption || ''
+            });
+          } else if (update.message.text) {
+            // Отправляем текст
+            await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+              chat_id: customer.telegram_user_id,
+              text: update.message.text,
+              parse_mode: 'HTML'
+            });
+          }
+          successCount++;
+        } catch (error) {
+          console.error(`Ошибка отправки клиенту ${customer.telegram_user_id}:`, error.message);
+          failCount++;
+        }
+        
+        // Небольшая задержка между сообщениями
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      // Отчёт админу
+      await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        chat_id: userId,
+        text: `✅ <b>Рассылка завершена!</b>
+
+📊 Статистика:
+✅ Отправлено: ${successCount}
+❌ Ошибок: ${failCount}
+📧 Всего клиентов: ${customers.length}`,
+        parse_mode: 'HTML'
+      });
+      
+      pendingReceipts.delete(`broadcast_${userId}`);
+      return res.json({ ok: true });
+    }
+
+    // ===== ОБЫЧНЫЕ КОМАНДЫ =====
     // Обработка команды /start
     if (update.message && update.message.text && update.message.text.startsWith('/start')) {
       const chatId = update.message.chat.id;
@@ -629,91 +730,6 @@ ${topProducts.map((p, i) => `${i + 1}. ${p[0]}: ${p[1].count} шт (${p[1].reven
           text: '❌ Эта функция доступна только администраторам'
         });
       }
-    }
-
-    // Обработка сообщений для рассылки
-    if (update.message && pendingReceipts.has(`broadcast_${update.message.from.id}`)) {
-      const userId = update.message.from.id;
-      
-      if (userId !== ADMIN_ID) return res.json({ ok: true });
-      
-      // Отмена
-      if (update.message.text === '/cancel') {
-        pendingReceipts.delete(`broadcast_${userId}`);
-        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          chat_id: userId,
-          text: '❌ Рассылка отменена'
-        });
-        return res.json({ ok: true });
-      }
-      
-      // Получаем всех клиентов
-      const { data: customers } = await supabase
-        .from(getTableName('customers'))
-        .select('telegram_user_id');
-      
-      if (!customers || customers.length === 0) {
-        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          chat_id: userId,
-          text: '❌ Нет клиентов в базе данных'
-        });
-        pendingReceipts.delete(`broadcast_${userId}`);
-        return res.json({ ok: true });
-      }
-      
-      let successCount = 0;
-      let failCount = 0;
-      
-      // Отправляем сообщение
-      for (const customer of customers) {
-        try {
-          if (update.message.photo) {
-            // Отправляем фото
-            const photo = update.message.photo[update.message.photo.length - 1];
-            await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-              chat_id: customer.telegram_user_id,
-              photo: photo.file_id,
-              caption: update.message.caption || ''
-            });
-          } else if (update.message.video) {
-            // Отправляем видео
-            await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
-              chat_id: customer.telegram_user_id,
-              video: update.message.video.file_id,
-              caption: update.message.caption || ''
-            });
-          } else if (update.message.text) {
-            // Отправляем текст
-            await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-              chat_id: customer.telegram_user_id,
-              text: update.message.text,
-              parse_mode: 'HTML'
-            });
-          }
-          successCount++;
-        } catch (error) {
-          console.error(`Ошибка отправки клиенту ${customer.telegram_user_id}:`, error.message);
-          failCount++;
-        }
-        
-        // Небольшая задержка между сообщениями
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      
-      // Отчёт админу
-      await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-        chat_id: userId,
-        text: `✅ <b>Рассылка завершена!</b>
-
-📊 Статистика:
-✅ Отправлено: ${successCount}
-❌ Ошибок: ${failCount}
-📧 Всего клиентов: ${customers.length}`,
-        parse_mode: 'HTML'
-      });
-      
-      pendingReceipts.delete(`broadcast_${userId}`);
-      return res.json({ ok: true });
     }
 
     // Обработка callback (чеки)
