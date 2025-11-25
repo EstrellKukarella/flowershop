@@ -154,13 +154,42 @@
         try {
           const userId = tg?.initDataUnsafe?.user?.id;
 
-          // Загрузка товаров
-          const { data: productsData } = await client
-            .from('flowers_products')
-            .select('*')
-            .eq('available', true)
-            .order('created_at', { ascending: false });
+          // ===== КРИТИЧНАЯ ЗАГРУЗКА (параллельно) =====
+          const criticalPromises = [
+            // Товары
+            client
+              .from('flowers_products')
+              .select('*')
+              .eq('available', true)
+              .order('created_at', { ascending: false }),
+            
+            // Настройки
+            client
+              .from('flowers_settings')
+              .select('*')
+              .eq('id', 1)
+              .single()
+          ];
+
+          // Если есть userId - добавляем загрузку клиента
+          if (userId) {
+            criticalPromises.push(
+              client
+                .from('flowers_customers')
+                .select('*')
+                .eq('telegram_user_id', userId)
+                .single()
+            );
+          }
+
+          // Загружаем всё критичное ОДНОВРЕМЕННО
+          const results = await Promise.all(criticalPromises);
           
+          const productsData = results[0].data;
+          const settingsData = results[1].data;
+          const customerData = userId ? results[2]?.data : null;
+
+          // Устанавливаем товары
           setProducts(productsData || []);
 
           // Извлекаем уникальные категории
@@ -178,47 +207,37 @@
           } else {
             setCategories(uniqueCategories);
           }
-
-          // Загрузка настроек
-          const { data: settingsData } = await client
-            .from('flowers_settings')
-            .select('*')
-            .eq('id', 1)
-            .single();
           
           setSettings(settingsData);
+          setCustomer(customerData);
 
+          // Показываем интерфейс - больше не грузим!
+          setLoading(false);
+
+          // ===== ЛЕНИВАЯ ЗАГРУЗКА (в фоне) =====
           if (userId) {
-            // Загрузка клиента
-            const { data: customerData } = await client
-              .from('flowers_customers')
-              .select('*')
-              .eq('telegram_user_id', userId)
-              .single();
-            
-            setCustomer(customerData);
-
-            // Загрузка заказов
-            const { data: ordersData } = await client
-              .from('flowers_orders')
-              .select('*')
-              .eq('telegram_user_id', userId)
-              .order('created_at', { ascending: false });
-            
-            setOrders(ordersData || []);
-
-            // Загрузка истории кэшбека
-            const { data: transactionsData } = await client
-              .from('flowers_cashback_transactions')
-              .select('*')
-              .eq('telegram_user_id', userId)
-              .order('created_at', { ascending: false });
-            
-            setCashbackTransactions(transactionsData || []);
+            // Заказы и транзакции грузим в фоне, не блокируя UI
+            Promise.all([
+              client
+                .from('flowers_orders')
+                .select('*')
+                .eq('telegram_user_id', userId)
+                .order('created_at', { ascending: false }),
+              
+              client
+                .from('flowers_cashback_transactions')
+                .select('*')
+                .eq('telegram_user_id', userId)
+                .order('created_at', { ascending: false })
+            ]).then(([ordersResult, transactionsResult]) => {
+              setOrders(ordersResult.data || []);
+              setCashbackTransactions(transactionsResult.data || []);
+            }).catch(error => {
+              console.error('Ошибка фоновой загрузки:', error);
+            });
           }
         } catch (error) {
           console.error('Ошибка загрузки:', error);
-        } finally {
           setLoading(false);
         }
       };
@@ -462,6 +481,7 @@
                     <img 
                       src={selectedProduct.image_url} 
                       alt={selectedProduct.name}
+                      loading="lazy"
                       className="w-full h-80 object-cover rounded-2xl mb-4"
                     />
                   ) : (
@@ -607,6 +627,7 @@
                         <img 
                           src={product.image_url} 
                           alt={product.name}
+                          loading="lazy"
                           className="w-full h-full object-cover"
                         />
                       ) : (
