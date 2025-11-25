@@ -188,7 +188,7 @@
             body: JSON.stringify({
               userId: order.telegram_user_id,
               status: newStatus,
-              orderNumber: orderId.slice(-6),
+              orderNumber: orderId, // Полный номер
               orderId: orderId,
               shopPhone: settings.shop_phone
             })
@@ -419,7 +419,7 @@
                   <div key={order.id} className="bg-white rounded-xl p-4 border border-gray-200">
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <p className="font-bold text-gray-900">Заказ #{order.id.slice(-6)}</p>
+                        <p className="font-bold text-gray-900">Заказ #{order.id}</p>
                         <p className="text-sm text-gray-500">
                           {new Date(order.created_at).toLocaleString('ru-RU')}
                         </p>
