@@ -263,7 +263,7 @@
         }
         
         const name = document.getElementById('customerName')?.value?.trim();
-        const phone = document.getElementById('customerPhone')?.value?.trim();
+        const phone = document.getElementById('customerPhone')?.value?.replace(/\s/g, '').trim(); // Убираем пробелы
         const comment = document.getElementById('customerComment')?.value?.trim();
         
         // Данные доставки
@@ -621,88 +621,174 @@
                   ))}
                   
                   {/* Форма заказа */}
-                  <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-3">
-                    <input
-                      id="customerName"
-                      type="text"
-                      placeholder={t.name}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-black"
-                    />
-                    
-                    {/* Телефон с префиксом +7 */}
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
-                        +7
-                      </span>
-                      <input
-                        id="customerPhone"
-                        type="tel"
-                        placeholder="775 550 02 42"
-                        maxLength="10"
-                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-black"
-                        onInput={(e) => {
-                          e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
-                        }}
-                      />
+                  <div className="space-y-3">
+                    {/* Контактные данные */}
+                    <div className="bg-white rounded-xl p-4 border border-gray-200">
+                      <h3 className="font-semibold text-gray-900 mb-3">
+                        👤 {lang === 'kk' ? 'Байланыс деректері' : 'Контактные данные'}
+                      </h3>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            {t.name}
+                          </label>
+                          <input
+                            id="customerName"
+                            type="text"
+                            placeholder={lang === 'kk' ? 'Аты-жөніңіз' : 'Ваше имя'}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-black focus:ring-2 focus:ring-black focus:ring-opacity-20"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            {t.phone}
+                          </label>
+                          <div className="relative">
+                            <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-900 font-semibold text-lg pointer-events-none">
+                              +7
+                            </div>
+                            <input
+                              id="customerPhone"
+                              type="tel"
+                              placeholder="777 123 45 67"
+                              maxLength="10"
+                              className="w-full pl-14 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-black focus:ring-2 focus:ring-black focus:ring-opacity-20 text-lg"
+                              onInput={(e) => {
+                                let value = e.target.value.replace(/\D/g, '');
+                                if (value.length > 3 && value.length <= 6) {
+                                  value = value.slice(0, 3) + ' ' + value.slice(3);
+                                } else if (value.length > 6 && value.length <= 8) {
+                                  value = value.slice(0, 3) + ' ' + value.slice(3, 6) + ' ' + value.slice(6);
+                                } else if (value.length > 8) {
+                                  value = value.slice(0, 3) + ' ' + value.slice(3, 6) + ' ' + value.slice(6, 8) + ' ' + value.slice(8, 10);
+                                }
+                                e.target.value = value;
+                              }}
+                            />
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {lang === 'kk' ? 'Мысалы: 777 123 45 67' : 'Например: 777 123 45 67'}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                     
                     {/* Тип доставки */}
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setDeliveryType('pickup')}
-                        className={`flex-1 py-3 rounded-xl font-medium transition-all ${
-                          deliveryType === 'pickup'
-                            ? 'bg-black text-white'
-                            : 'bg-gray-100 text-gray-700 border border-gray-300'
-                        }`}
-                      >
-                        🏪 {t.pickup}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeliveryType('delivery')}
-                        className={`flex-1 py-3 rounded-xl font-medium transition-all ${
-                          deliveryType === 'delivery'
-                            ? 'bg-black text-white'
-                            : 'bg-gray-100 text-gray-700 border border-gray-300'
-                        }`}
-                      >
-                        🚚 {t.delivery}
-                      </button>
+                    <div className="bg-white rounded-xl p-4 border border-gray-200">
+                      <h3 className="font-semibold text-gray-900 mb-3">
+                        📦 {lang === 'kk' ? 'Алу әдісі' : 'Способ получения'}
+                      </h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setDeliveryType('pickup')}
+                          className={`p-4 rounded-xl font-medium transition-all text-center ${
+                            deliveryType === 'pickup'
+                              ? 'bg-black text-white shadow-lg'
+                              : 'bg-gray-50 text-gray-700 border-2 border-gray-200 hover:border-gray-400'
+                          }`}
+                        >
+                          <div className="text-3xl mb-2">🏪</div>
+                          <div className="font-bold">{t.pickup}</div>
+                          <div className="text-xs mt-1 opacity-80">
+                            {lang === 'kk' ? 'Дүкеннен' : 'Из магазина'}
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeliveryType('delivery')}
+                          className={`p-4 rounded-xl font-medium transition-all text-center ${
+                            deliveryType === 'delivery'
+                              ? 'bg-black text-white shadow-lg'
+                              : 'bg-gray-50 text-gray-700 border-2 border-gray-200 hover:border-gray-400'
+                          }`}
+                        >
+                          <div className="text-3xl mb-2">🚚</div>
+                          <div className="font-bold">{t.delivery}</div>
+                          <div className="text-xs mt-1 opacity-80">
+                            {lang === 'kk' ? 'Мекенжайға' : 'По адресу'}
+                          </div>
+                        </button>
+                      </div>
                     </div>
                     
-                    {/* Поля доставки */}
+                    {/* Данные доставки */}
                     {deliveryType === 'delivery' && (
-                      <>
-                        <input
-                          id="deliveryAddress"
-                          type="text"
-                          placeholder={t.address}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-black"
-                        />
-                        <div className="grid grid-cols-2 gap-2">
-                          <input
-                            id="deliveryDate"
-                            type="date"
-                            min={new Date().toISOString().split('T')[0]}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-black"
-                          />
-                          <input
-                            id="deliveryTime"
-                            type="time"
-                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-black"
-                          />
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border-2 border-blue-200 animate-slideUp">
+                        <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                          <span className="text-2xl">🚚</span>
+                          {lang === 'kk' ? 'Жеткізу мәліметтері' : 'Данные доставки'}
+                        </h3>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              📍 {t.address}
+                            </label>
+                            <input
+                              id="deliveryAddress"
+                              type="text"
+                              placeholder={lang === 'kk' ? 'Көше, үй, пәтер' : 'Улица, дом, квартира'}
+                              className="w-full px-4 py-3 border border-blue-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 bg-white"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              📅 {t.deliveryDate}
+                            </label>
+                            <div className="relative">
+                              <input
+                                id="deliveryDate"
+                                type="date"
+                                min={new Date().toISOString().split('T')[0]}
+                                className="w-full px-4 py-3 border border-blue-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 bg-white text-lg appearance-none"
+                                style={{colorScheme: 'light'}}
+                              />
+                              <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-blue-500">
+                                📅
+                              </div>
+                            </div>
+                            <p className="text-xs text-blue-700 mt-1">
+                              {lang === 'kk' ? 'Жеткізу күнін таңдаңыз' : 'Выберите дату доставки'}
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              ⏰ {t.deliveryTime}
+                            </label>
+                            <div className="relative">
+                              <input
+                                id="deliveryTime"
+                                type="time"
+                                className="w-full px-4 py-3 border border-blue-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 bg-white text-lg appearance-none"
+                                style={{colorScheme: 'light'}}
+                              />
+                              <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-blue-500">
+                                ⏰
+                              </div>
+                            </div>
+                            <p className="text-xs text-blue-700 mt-1">
+                              {lang === 'kk' ? 'Жеткізу уақытын таңдаңыз' : 'Выберите время доставки'}
+                            </p>
+                          </div>
                         </div>
-                      </>
+                      </div>
                     )}
                     
-                    <textarea
-                      id="customerComment"
-                      placeholder={t.comment}
-                      rows="3"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-black"
-                    />
+                    {/* Комментарий */}
+                    <div className="bg-white rounded-xl p-4 border border-gray-200">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        💬 {t.comment} ({lang === 'kk' ? 'міндетті емес' : 'необязательно'})
+                      </label>
+                      <textarea
+                        id="customerComment"
+                        placeholder={lang === 'kk' ? 'Тапсырысыңыз туралы қосымша ақпарат...' : 'Дополнительная информация о заказе...'}
+                        rows="3"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-black focus:ring-2 focus:ring-black focus:ring-opacity-20"
+                      />
+                    </div>
                   </div>
                   
                   {/* Использование кэшбека */}
