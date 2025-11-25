@@ -372,6 +372,54 @@ app.post('/api/notify-status', async (req, res) => {
   }
 });
 
+// API: Запрос на отправку фото клиенту
+app.post('/api/send-photo-prompt', async (req, res) => {
+  try {
+    const { orderId, telegramUserId, photoType } = req.body;
+
+    if (!orderId || !telegramUserId || !photoType) {
+      return res.status(400).json({ error: 'Неверные данные' });
+    }
+
+    // Сохраняем ожидание фото от админа
+    pendingReceipts.set(`photo_${ADMIN_ID}_${orderId}`, {
+      orderId,
+      customerId: telegramUserId,
+      photoType
+    });
+
+    const messages = {
+      bouquet: {
+        ru: '💐 <b>Отправьте фото букета</b>\n\nЗагрузите фото готового букета для заказа #' + orderId + '\n\nКлиент получит это фото с сообщением.',
+        kk: '💐 <b>Шоқ фотосын жіберіңіз</b>\n\nТапсырыс #' + orderId + ' үшін дайын шоқтың фотосын жүктеңіз\n\nКлиент бұл фотоны хабарламамен алады.'
+      },
+      delivery: {
+        ru: '📦 <b>Отправьте фото доставки</b>\n\nЗагрузите фото доставленного букета для заказа #' + orderId + '\n\nКлиент получит подтверждение доставки.',
+        kk: '📦 <b>Жеткізу фотосын жіберіңіз</b>\n\nТапсырыс #' + orderId + ' үшін жеткізілген шоқтың фотосын жүктеңіз\n\nКлиент жеткізу растамасын алады.'
+      }
+    };
+
+    const message = messages[photoType] || messages.bouquet;
+
+    await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      chat_id: ADMIN_ID,
+      text: message.ru + '\n\n' + message.kk,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '❌ Отменить', callback_data: `cancel_photo_${orderId}` }
+        ]]
+      }
+    });
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Ошибка отправки запроса на фото:', error);
+    res.status(500).json({ error: 'Ошибка' });
+  }
+});
+
 // Webhook обработчик
 app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
   try {
@@ -739,6 +787,26 @@ ${topProducts.map((p, i) => `${i + 1}. ${p[0]}: ${p[1].count} шт (${p[1].reven
       const messageId = callbackQuery.message.message_id;
       const data = callbackQuery.data;
 
+      // Отмена отправки фото
+      if (data.startsWith('cancel_photo_')) {
+        const orderId = data.replace('cancel_photo_', '');
+        
+        // Удаляем ожидание фото
+        pendingReceipts.delete(`photo_${ADMIN_ID}_${orderId}`);
+        
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
+          callback_query_id: callbackQuery.id,
+          text: '❌ Отменено'
+        });
+        
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`, {
+          chat_id: chatId,
+          message_id: messageId,
+          text: '❌ Отправка фото отменена',
+          parse_mode: 'HTML'
+        });
+      }
+
       // Клиент отправляет чек
       if (data.startsWith('receipt_')) {
         const orderId = data.replace('receipt_', '');
@@ -832,11 +900,49 @@ ${topProducts.map((p, i) => `${i + 1}. ${p[0]}: ${p[1].count} шт (${p[1].reven
       }
     }
 
-    // Обработка фото (чека)
+    // Обработка фото (чека или от админа для клиента)
     if (update.message && update.message.photo) {
       const chatId = update.message.chat.id;
       const photo = update.message.photo[update.message.photo.length - 1];
       
+      // Проверяем - это фото для клиента от админа?
+      for (const [key, value] of pendingReceipts.entries()) {
+        if (key.startsWith('photo_') && chatId === ADMIN_ID) {
+          const photoData = value;
+          
+          const messages = {
+            bouquet: {
+              ru: '💐 <b>Ваш букет готов!</b>\n\n📋 Заказ #' + photoData.orderId + '\n\nБукет уже собран и готов к доставке! 🌸',
+              kk: '💐 <b>Сіздің шоғыңыз дайын!</b>\n\n📋 Тапсырыс #' + photoData.orderId + '\n\nШоқ жиналды және жеткізуге дайын! 🌸'
+            },
+            delivery: {
+              ru: '📦 <b>Букет доставлен!</b>\n\n📋 Заказ #' + photoData.orderId + '\n\nБукет успешно доставлен по адресу! Спасибо за заказ! 🎉',
+              kk: '📦 <b>Шоқ жеткізілді!</b>\n\n📋 Тапсырыс #' + photoData.orderId + '\n\nШоқ мекенжайға сәтті жеткізілді! Тапсырысыңызға рахмет! 🎉'
+            }
+          };
+
+          const message = messages[photoData.photoType] || messages.bouquet;
+          
+          // Отправляем фото клиенту
+          await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+            chat_id: photoData.customerId,
+            photo: photo.file_id,
+            caption: message.ru + '\n\n' + message.kk,
+            parse_mode: 'HTML'
+          });
+
+          // Подтверждение админу
+          await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            chat_id: ADMIN_ID,
+            text: '✅ Фото отправлено клиенту!'
+          });
+
+          pendingReceipts.delete(key);
+          return res.json({ ok: true });
+        }
+      }
+      
+      // Проверяем - это чек об оплате?
       const orderId = pendingReceipts.get(`waiting_${chatId}`);
       
       if (orderId) {
