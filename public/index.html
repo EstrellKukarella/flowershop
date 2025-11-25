@@ -44,6 +44,7 @@
       const [selectedProduct, setSelectedProduct] = useState(null);
       const [selectedCategory, setSelectedCategory] = useState('all');
       const [categories, setCategories] = useState([]);
+      const [searchQuery, setSearchQuery] = useState('');
       const [useCashback, setUseCashback] = useState(false);
       const [cashbackAmount, setCashbackAmount] = useState(0);
       const [deliveryType, setDeliveryType] = useState('pickup'); // pickup или delivery
@@ -243,6 +244,13 @@
         showToast(lang === 'kk' ? 'Себеттен өшірілді' : 'Удалено из корзины');
       };
 
+      const reorder = (order) => {
+        setCart(order.items);
+        setView('cart');
+        showToast(lang === 'kk' ? 'Тапсырыс себетке қосылды' : 'Заказ добавлен в корзину');
+        tg?.HapticFeedback?.impactOccurred('medium');
+      };
+
       const getCartSubtotal = () => {
         return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
       };
@@ -367,6 +375,16 @@
       const filteredProducts = selectedCategory === 'all' 
         ? products 
         : products.filter(p => p.category === selectedCategory);
+      
+      // Дополнительная фильтрация по поиску
+      const searchedProducts = searchQuery.trim() 
+        ? filteredProducts.filter(p => 
+            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.name_kk?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.description_kk?.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+        : filteredProducts;
 
       if (loading) {
         return (
@@ -480,6 +498,30 @@
           {/* Каталог */}
           {view === 'catalog' && (
             <div className="p-4">
+              {/* Поиск */}
+              <div className="mb-4">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder={lang === 'kk' ? '🔍 Іздеу...' : '🔍 Поиск...'}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-xl focus:outline-none focus:border-black focus:ring-2 focus:ring-black focus:ring-opacity-20"
+                  />
+                  <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl">
+                    🔍
+                  </div>
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+              
               {/* Категории */}
               <div className="category-scroll flex gap-2 mb-4 pb-2">
                 <button
@@ -509,7 +551,15 @@
 
               {/* Товары */}
               <div className="grid grid-cols-2 gap-3">
-                {filteredProducts.map(product => (
+                {searchedProducts.length === 0 ? (
+                  <div className="col-span-2 text-center py-12">
+                    <div className="text-6xl mb-4">🔍</div>
+                    <p className="text-gray-500">
+                      {lang === 'kk' ? 'Ештеңе табылмады' : 'Ничего не найдено'}
+                    </p>
+                  </div>
+                ) : (
+                  searchedProducts.map(product => (
                   <div 
                     key={product.id} 
                     className="card rounded-xl overflow-hidden cursor-pointer"
@@ -556,7 +606,8 @@
                       </div>
                     </div>
                   </div>
-                ))}
+                ))
+                )}
               </div>
             </div>
           )}
@@ -923,6 +974,14 @@
                       <p className="font-bold text-gray-900 mt-2">
                         {order.total} ₸
                       </p>
+                      
+                      {/* Кнопка повторного заказа */}
+                      <button
+                        onClick={() => reorder(order)}
+                        className="w-full mt-3 bg-black text-white py-2 rounded-lg font-medium text-sm flex items-center justify-center gap-2"
+                      >
+                        🔄 {lang === 'kk' ? 'Қайта тапсырыс беру' : 'Заказать ещё раз'}
+                      </button>
                     </div>
                   ))}
                 </div>
