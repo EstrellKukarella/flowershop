@@ -377,16 +377,22 @@ app.post('/api/send-photo-prompt', async (req, res) => {
   try {
     const { orderId, telegramUserId, photoType } = req.body;
 
+    console.log('📸 Запрос на фото:', { orderId, telegramUserId, photoType });
+
     if (!orderId || !telegramUserId || !photoType) {
       return res.status(400).json({ error: 'Неверные данные' });
     }
 
     // Сохраняем ожидание фото от админа
-    pendingReceipts.set(`photo_${ADMIN_ID}_${orderId}`, {
+    const key = `photo_${ADMIN_ID}_${orderId}`;
+    pendingReceipts.set(key, {
       orderId,
       customerId: telegramUserId,
       photoType
     });
+    
+    console.log('✅ Сохранили в pendingReceipts:', key);
+    console.log('📋 Текущие ключи:', Array.from(pendingReceipts.keys()));
 
     const messages = {
       bouquet: {
@@ -906,10 +912,26 @@ ${topProducts.map((p, i) => `${i + 1}. ${p[0]}: ${p[1].count} шт (${p[1].reven
       const photo = update.message.photo[update.message.photo.length - 1];
       
       // Проверяем - это фото для клиента от админа?
-      for (const [key, value] of pendingReceipts.entries()) {
-        if (key.startsWith('photo_') && chatId === ADMIN_ID) {
-          const photoData = value;
-          
+      if (chatId === ADMIN_ID) {
+        console.log('📸 Админ отправил фото!');
+        console.log('🔑 Ищем ключ в pendingReceipts...');
+        console.log('📋 Все ключи:', Array.from(pendingReceipts.keys()));
+        
+        // Ищем любой ключ photo_ для этого админа
+        let foundKey = null;
+        let photoData = null;
+        
+        for (const [key, value] of pendingReceipts.entries()) {
+          if (key.startsWith('photo_') && key.includes(`photo_${ADMIN_ID}_`)) {
+            foundKey = key;
+            photoData = value;
+            console.log('✅ Нашли ключ:', foundKey);
+            console.log('📦 Данные:', photoData);
+            break; // Берём первый найденный
+          }
+        }
+        
+        if (foundKey && photoData) {
           const messages = {
             bouquet: {
               ru: '💐 <b>Ваш букет готов!</b>\n\n📋 Заказ #' + photoData.orderId + '\n\nБукет уже собран и готов к доставке! 🌸',
@@ -923,22 +945,36 @@ ${topProducts.map((p, i) => `${i + 1}. ${p[0]}: ${p[1].count} шт (${p[1].reven
 
           const message = messages[photoData.photoType] || messages.bouquet;
           
-          // Отправляем фото клиенту
-          await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-            chat_id: photoData.customerId,
-            photo: photo.file_id,
-            caption: message.ru + '\n\n' + message.kk,
-            parse_mode: 'HTML'
-          });
+          try {
+            // Отправляем фото клиенту
+            await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+              chat_id: photoData.customerId,
+              photo: photo.file_id,
+              caption: message.ru + '\n\n' + message.kk,
+              parse_mode: 'HTML'
+            });
 
-          // Подтверждение админу
-          await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-            chat_id: ADMIN_ID,
-            text: '✅ Фото отправлено клиенту!'
-          });
+            // Подтверждение админу
+            await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+              chat_id: ADMIN_ID,
+              text: '✅ Фото отправлено клиенту!'
+            });
 
-          pendingReceipts.delete(key);
-          return res.json({ ok: true });
+            pendingReceipts.delete(foundKey);
+            return res.json({ ok: true });
+          } catch (error) {
+            console.error('Ошибка отправки фото клиенту:', error);
+            
+            // Сообщаем админу об ошибке
+            await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+              chat_id: ADMIN_ID,
+              text: '❌ Ошибка отправки фото клиенту!\n\n' + error.message
+            });
+            
+            return res.json({ ok: true });
+          }
+        } else {
+          console.log('❌ Ключ не найден! Админ отправил фото но нет ожидания.');
         }
       }
       
