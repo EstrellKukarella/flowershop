@@ -893,7 +893,10 @@ ${topProducts.map((p, i) => `${i + 1}. ${p[0]}: ${p[1].count} шт (${p[1].reven
         
         await supabase
           .from(getTableName('orders'))
-          .update({ status: 'processing' })
+          .update({ 
+            status: 'processing',
+            payment_confirmed: true 
+          })
           .eq('id', orderId);
 
         const { data: order } = await supabase
