@@ -70,17 +70,6 @@
         initSupabase();
       }, []);
 
-      // Автообновление каждые 10 секунд
-      useEffect(() => {
-        if (!supabase) return;
-
-        const intervalId = setInterval(() => {
-          loadData(supabase);
-        }, 10000); // 10 секунд
-
-        return () => clearInterval(intervalId);
-      }, [supabase]);
-
       const initSupabase = async () => {
         try {
           const configResponse = await fetch('/api/config');
@@ -284,18 +273,8 @@
         <div className="min-h-screen bg-gray-50 pb-20">
           {/* Заголовок */}
           <div className="bg-black text-white p-6 shadow-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold mb-1">⚙️ Админ-панель</h1>
-                <p className="text-gray-300">Цветочная Лавка</p>
-              </div>
-              <button
-                onClick={() => supabase && loadData(supabase)}
-                className="bg-white text-black px-4 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors flex items-center gap-2"
-              >
-                🔄 Обновить
-              </button>
-            </div>
+            <h1 className="text-2xl font-bold mb-1">⚙️ Админ-панель</h1>
+            <p className="text-gray-300">Цветочная Лавка</p>
           </div>
 
           {/* Статистика */}
@@ -561,8 +540,8 @@
                       </div>
                     )}
 
-                    {/* Кнопки отправки фото - ТОЛЬКО ПОСЛЕ ОПЛАТЫ */}
-                    {order.telegram_user_id && order.payment_confirmed && (
+                    {/* Кнопки отправки фото - показываем если оплата подтверждена ИЛИ статус "в работе" */}
+                    {order.telegram_user_id && (order.payment_confirmed || order.status === 'processing') && (
                       <div className="pt-3 border-t border-gray-200 space-y-2">
                         <div className="grid grid-cols-2 gap-2">
                           <button
