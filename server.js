@@ -52,7 +52,7 @@ Mini App ашып, жаңа гүлдерді есігіңізге жеткізу
 
 💳 Төлем: Kaspi немесе қолма-қол
 🚚 Астана бойынша жеткізу
-⭐ Тапсырыстан 5% кэшбек!` 
+⭐ Бірінші тапсырысқа 10% жеңілдік!` 
     : 
     `🌸 Добро пожаловать, ${firstName}!
 
@@ -71,7 +71,7 @@ Mini App ашып, жаңа гүлдерді есігіңізге жеткізу
 
 💳 Оплата: Kaspi или наличными
 🚚 Доставка по Астане
-⭐ Кэшбек 5% с заказа!`;
+⭐ Скидка 10% на первый заказ!`;
 };
 
 // URL приложений
@@ -902,17 +902,34 @@ ${topProducts.map((p, i) => `${i + 1}. ${p[0]}: ${p[1].count} шт (${p[1].reven
           .eq('id', orderId)
           .single();
 
+        let lang = 'ru'; // По умолчанию русский
+
         if (order && order.telegram_user_id) {
+          // Получаем язык клиента
+          const { data: customer } = await supabase
+            .from(getTableName('customers'))
+            .select('language_code')
+            .eq('telegram_user_id', order.telegram_user_id)
+            .single();
+
+          lang = customer?.language_code || 'ru';
+
+          const messageText = lang === 'kk'
+            ? `✅ <b>Төлем расталды!</b>\n\n📋 Тапсырыс #${orderId}\n\nТапсырысыңызды қабылдадық! 🌸`
+            : `✅ <b>Оплата подтверждена!</b>\n\n📋 Заказ #${orderId}\n\nМы приняли ваш заказ в работу! 🌸`;
+
           await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             chat_id: order.telegram_user_id,
-            text: `✅ <b>Оплата подтверждена!</b>\n\n📋 Заказ #${orderId}\n\nМы приняли ваш заказ в работу! 🌸`,
+            text: messageText,
             parse_mode: 'HTML'
           });
         }
 
+        const callbackText = lang === 'kk' ? '✅ Төлем расталды!' : '✅ Оплата подтверждена!';
+
         await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
           callback_query_id: callbackQuery.id,
-          text: '✅ Оплата подтверждена!'
+          text: callbackText
         });
 
         await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageCaption`, {
