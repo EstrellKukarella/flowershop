@@ -173,6 +173,31 @@
         }
       };
 
+      const confirmPayment = async (orderId) => {
+        try {
+          const { error } = await supabase
+            .from('flowers_orders')
+            .update({ payment_confirmed: true })
+            .eq('id', orderId);
+
+          if (error) throw error;
+
+          // Обновляем стейт напрямую
+          setOrders(prevOrders => 
+            prevOrders.map(order => 
+              order.id === orderId 
+                ? { ...order, payment_confirmed: true }
+                : order
+            )
+          );
+
+          showToast('✅ Оплата подтверждена!');
+        } catch (error) {
+          console.error('Ошибка подтверждения оплаты:', error);
+          showToast('Ошибка подтверждения', 'error');
+        }
+      };
+
       const updateOrderStatus = async (orderId, newStatus) => {
         try {
           const { data: order } = await supabase
@@ -523,12 +548,18 @@
                     {/* Статус оплаты */}
                     {!order.payment_confirmed && (
                       <div className="mb-3 bg-yellow-50 p-3 rounded-lg border border-yellow-300">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between mb-2">
                           <span className="text-yellow-700 font-medium">⚠️ Оплата не подтверждена</span>
                         </div>
-                        <p className="text-xs text-yellow-600 mt-1">
+                        <p className="text-xs text-yellow-600 mb-3">
                           Подтвердите оплату, чтобы отправить фото букета/доставки
                         </p>
+                        <button
+                          onClick={() => confirmPayment(order.id)}
+                          className="w-full bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                        >
+                          ✅ Подтвердить оплату
+                        </button>
                       </div>
                     )}
 
