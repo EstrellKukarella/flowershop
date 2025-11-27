@@ -37,6 +37,9 @@
       const [selectedCategory, setSelectedCategory] = useState('all');
       const [categories, setCategories] = useState([]);
       const [toast, setToast] = useState(null);
+      const [broadcastMessage, setBroadcastMessage] = useState('');
+      const [broadcastMessageKk, setBroadcastMessageKk] = useState('');
+      const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
       
       const [productForm, setProductForm] = useState({
         name: '', 
@@ -48,7 +51,8 @@
         category_kk: '',
         image_url: '',
         badge: '',
-        available: true
+        available: true,
+        stock: 999
       });
       
       const [settings, setSettings] = useState({
@@ -240,6 +244,44 @@
         }
       };
 
+      const sendBroadcast = async () => {
+        if (!broadcastMessage.trim() || !broadcastMessageKk.trim()) {
+          showToast('Заполните сообщение на обоих языках', 'error');
+          return;
+        }
+
+        if (!confirm(`Отправить рассылку всем клиентам (${customers.length} чел.)?`)) {
+          return;
+        }
+
+        setIsSendingBroadcast(true);
+
+        try {
+          const response = await fetch('/api/send-broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              messageRu: broadcastMessage,
+              messageKk: broadcastMessageKk,
+              customers: customers
+            })
+          });
+
+          if (response.ok) {
+            showToast(`✅ Рассылка отправлена! (${customers.length} получателей)`);
+            setBroadcastMessage('');
+            setBroadcastMessageKk('');
+          } else {
+            showToast('Ошибка отправки рассылки', 'error');
+          }
+        } catch (error) {
+          console.error('Ошибка рассылки:', error);
+          showToast('Ошибка отправки', 'error');
+        } finally {
+          setIsSendingBroadcast(false);
+        }
+      };
+
       const filteredOrders = orderFilter === 'all' 
         ? orders 
         : orders.filter(order => order.status === orderFilter);
@@ -299,8 +341,8 @@
 
           {/* Табы */}
           <div className="flex gap-2 px-4 mb-4 overflow-x-auto">
-            {['Товары', 'Заказы', 'Клиенты', 'Настройки'].map((tab, idx) => {
-              const tabValue = ['products', 'orders', 'customers', 'settings'][idx];
+            {['Товары', 'Заказы', 'Клиенты', 'Рассылка', 'Настройки'].map((tab, idx) => {
+              const tabValue = ['products', 'orders', 'customers', 'broadcast', 'settings'][idx];
               return (
                 <button
                   key={tab}
@@ -400,11 +442,22 @@
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-gray-900">{product.price} ₸</span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            product.available ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                          }`}>
-                            {product.available ? '✓ В наличии' : '✕ Нет в наличии'}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {product.stock !== undefined && (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                product.stock === 0 ? 'bg-red-100 text-red-700' :
+                                product.stock < 5 ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-blue-100 text-blue-700'
+                              }`}>
+                                📦 {product.stock === 999 ? '∞' : product.stock} шт
+                              </span>
+                            )}
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              product.available ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                            }`}>
+                              {product.available ? '✓ В наличии' : '✕ Нет в наличии'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -612,6 +665,79 @@
             </div>
           )}
 
+          {/* Рассылка */}
+          {activeTab === 'broadcast' && (
+            <div className="px-4">
+              <div className="bg-white rounded-xl p-6 border border-gray-200">
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-3xl">📢</span>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">Рассылка</h2>
+                      <p className="text-sm text-gray-500">Отправить сообщение всем клиентам ({customers.length} чел.)</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Сообщение на русском */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        🇷🇺 Сообщение на русском
+                      </label>
+                      <textarea
+                        value={broadcastMessage}
+                        onChange={(e) => setBroadcastMessage(e.target.value)}
+                        placeholder="Введите текст сообщения на русском языке..."
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-black focus:ring-2 focus:ring-black focus:ring-opacity-20 min-h-[120px]"
+                        disabled={isSendingBroadcast}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {broadcastMessage.length} символов
+                      </p>
+                    </div>
+
+                    {/* Сообщение на казахском */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        🇰🇿 Сообщение на казахском
+                      </label>
+                      <textarea
+                        value={broadcastMessageKk}
+                        onChange={(e) => setBroadcastMessageKk(e.target.value)}
+                        placeholder="Қазақ тілінде хабарлама мәтінін енгізіңіз..."
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-black focus:ring-2 focus:ring-black focus:ring-opacity-20 min-h-[120px]"
+                        disabled={isSendingBroadcast}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {broadcastMessageKk.length} символов
+                      </p>
+                    </div>
+
+                    {/* Кнопка отправки */}
+                    <button
+                      onClick={sendBroadcast}
+                      disabled={isSendingBroadcast || !broadcastMessage.trim() || !broadcastMessageKk.trim()}
+                      className={`w-full py-3 rounded-xl font-bold text-lg transition-all ${
+                        isSendingBroadcast || !broadcastMessage.trim() || !broadcastMessageKk.trim()
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-black text-white hover:bg-gray-800'
+                      }`}
+                    >
+                      {isSendingBroadcast ? '⏳ Отправка...' : `📢 Отправить всем (${customers.length})`}
+                    </button>
+
+                    {/* Предупреждение */}
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <p className="text-sm text-yellow-800">
+                        ⚠️ <strong>Внимание:</strong> Сообщение будет отправлено ВСЕМ клиентам. Убедитесь, что текст корректен на обоих языках.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Настройки */}
           {activeTab === 'settings' && (
             <div className="px-4">
@@ -759,6 +885,22 @@
                     onChange={(e) => setProductForm({...productForm, price: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      📦 Количество (остаток)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Количество"
+                      value={productForm.stock}
+                      onChange={(e) => setProductForm({...productForm, stock: parseInt(e.target.value) || 0})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      min="0"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      💡 При 0 товар скроется из каталога. 999 = "много"
+                    </p>
+                  </div>
                   <input
                     type="text"
                     placeholder="Категория (RU)"
