@@ -422,7 +422,8 @@
                   { value: 'all', label: 'Все', count: orders.length },
                   { value: 'pending', label: 'Ожидают', count: stats.pending },
                   { value: 'processing', label: 'В работе', count: stats.processing },
-                  { value: 'delivered', label: 'Доставлено', count: stats.delivered }
+                  { value: 'delivered', label: 'Доставлено', count: stats.delivered },
+                  { value: 'cancelled', label: 'Отменённые', count: orders.filter(o => o.status === 'cancelled').length }
                 ].map(filter => (
                   <button
                     key={filter.value}
