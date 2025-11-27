@@ -500,6 +500,8 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
     if (update.message && (update.message.text === '/broadcast' || update.message.text === '📢 Рассылка')) {
       const chatId = update.message.chat.id;
 
+      console.log('🔔 Активация режима рассылки для', chatId);
+
       if (chatId !== ADMIN_ID) {
         await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           chat_id: chatId,
@@ -510,6 +512,7 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
 
       // Включаем режим рассылки
       pendingReceipts.set(`broadcast_mode_${chatId}`, true);
+      console.log('✅ Режим рассылки активирован, размер Map:', pendingReceipts.size);
 
       const instructionsText = `📢 <b>РЕЖИМ РАССЫЛКИ АКТИВИРОВАН</b>
 
@@ -525,13 +528,22 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
         text: instructionsText,
         parse_mode: 'HTML'
       });
+
+      return res.json({ ok: true });
     }
 
     // Обработка сообщения в режиме рассылки
     if (update.message && pendingReceipts.get(`broadcast_mode_${update.message.chat.id}`)) {
       const chatId = update.message.chat.id;
 
+      console.log('📨 Сообщение в режиме рассылки от', chatId, 'Текст:', update.message.text);
+
       if (chatId !== ADMIN_ID) {
+        return res.json({ ok: true });
+      }
+
+      // ВАЖНО: Игнорируем саму команду активации!
+      if (update.message.text === '📢 Рассылка' || update.message.text === '/broadcast') {
         return res.json({ ok: true });
       }
 
