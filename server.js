@@ -490,6 +490,61 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
   }
 });
 
+// API: Запрос на фото от админа
+app.post('/api/send-photo-prompt', async (req, res) => {
+  try {
+    const { orderId, telegramUserId, photoType } = req.body;
+
+    console.log('📸 Запрос на фото:', { orderId, telegramUserId, photoType });
+
+    if (!orderId || !telegramUserId || !photoType) {
+      return res.status(400).json({ error: 'Неверные данные' });
+    }
+
+    // Сохраняем ожидание фото от админа
+    // ВАЖНО: добавляем photoType в ключ чтобы можно было отправить букет И доставку!
+    const key = `photo_${ADMIN_ID}_${orderId}_${photoType}`;
+    pendingReceipts.set(key, {
+      orderId,
+      customerId: telegramUserId,
+      photoType
+    });
+    
+    console.log('✅ Сохранили в pendingReceipts:', key);
+    console.log('📋 Текущие ключи:', Array.from(pendingReceipts.keys()));
+
+    const messages = {
+      bouquet: {
+        ru: '💐 <b>Отправьте фото букета</b>\n\nЗагрузите фото готового букета для заказа #' + orderId + '\n\nКлиент получит это фото с сообщением.',
+        kk: '💐 <b>Шоқ фотосын жіберіңіз</b>\n\nТапсырыс #' + orderId + ' үшін дайын шоқтың фотосын жүктеңіз\n\nКлиент бұл фотоны хабарламамен алады.'
+      },
+      delivery: {
+        ru: '📦 <b>Отправьте фото доставки</b>\n\nЗагрузите фото доставленного букета для заказа #' + orderId + '\n\nКлиент получит подтверждение доставки.',
+        kk: '📦 <b>Жеткізу фотосын жіберіңіз</b>\n\nТапсырыс #' + orderId + ' үшін жеткізілген шоқтың фотосын жүктеңіз\n\nКлиент жеткізу растамасын алады.'
+      }
+    };
+
+    const message = messages[photoType] || messages.bouquet;
+
+    await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      chat_id: ADMIN_ID,
+      text: message.ru + '\n\n' + message.kk,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '❌ Отменить', callback_data: `cancel_photo_${orderId}_${photoType}` }
+        ]]
+      }
+    });
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Ошибка отправки запроса на фото:', error);
+    res.status(500).json({ error: 'Ошибка' });
+  }
+});
+
 // API: Настройка webhook
 app.post('/api/setup-webhook', async (req, res) => {
   try {
