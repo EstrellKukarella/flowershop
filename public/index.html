@@ -198,6 +198,31 @@
         }
       };
 
+      // Автозаполнение контактов клиента
+      useEffect(() => {
+        if (customer) {
+          // Заполняем имя
+          const nameInput = document.getElementById('customerName');
+          if (nameInput && !nameInput.value) {
+            const fullName = customer.first_name || '';
+            nameInput.value = fullName;
+          }
+
+          // Заполняем телефон из last_phone
+          const phoneInput = document.getElementById('customerPhone');
+          if (phoneInput && !phoneInput.value && customer.last_phone) {
+            let phone = customer.last_phone.replace(/\D/g, '');
+            // Убираем +7 если есть
+            if (phone.startsWith('7')) phone = phone.slice(1);
+            if (phone.length === 10) {
+              // Форматируем: 777 123 45 67
+              phone = phone.slice(0, 3) + ' ' + phone.slice(3, 6) + ' ' + phone.slice(6, 8) + ' ' + phone.slice(8, 10);
+              phoneInput.value = phone;
+            }
+          }
+        }
+      }, [customer]);
+
       const loadData = async (client) => {
         try {
           const userId = tg?.initDataUnsafe?.user?.id;
@@ -438,6 +463,14 @@
                 amount: cashbackUsed,
                 balance_after: newBalance
               });
+          }
+          
+          // Сохраняем телефон для автозаполнения в будущем
+          if (userId) {
+            await supabase
+              .from('flowers_customers')
+              .update({ last_phone: phone })
+              .eq('telegram_user_id', userId);
           }
           
           await fetch('/api/send-order', {
