@@ -315,8 +315,25 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
             web_app: { url: ADMIN_APP_URL }
           }
         ]);
+
+        // Reply Keyboard для админа (постоянные кнопки)
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: chatId,
+          text: welcomeText,
+          parse_mode: 'HTML',
+          reply_markup: {
+            keyboard: [
+              [{ text: '📊 Статистика' }, { text: '📢 Рассылка' }],
+              [{ text: '🌸 Каталог' }, { text: '⚙️ Админка' }]
+            ],
+            resize_keyboard: true,
+            persistent: true
+          }
+        });
+        return res.json({ ok: true });
       }
 
+      // Для обычных пользователей
       await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         chat_id: chatId,
         text: welcomeText,
@@ -325,8 +342,8 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
       });
     }
 
-    // Команда /stats (только для админа)
-    if (update.message && update.message.text === '/stats') {
+    // Команда /stats или кнопка "Статистика" (только для админа)
+    if (update.message && (update.message.text === '/stats' || update.message.text === '📊 Статистика')) {
       const chatId = update.message.chat.id;
 
       if (chatId !== ADMIN_ID) {
@@ -479,8 +496,8 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
       }
     }
 
-    // Команда /broadcast (только для админа)
-    if (update.message && update.message.text === '/broadcast') {
+    // Команда /broadcast или кнопка "Рассылка" (только для админа)
+    if (update.message && (update.message.text === '/broadcast' || update.message.text === '📢 Рассылка')) {
       const chatId = update.message.chat.id;
 
       if (chatId !== ADMIN_ID) {
@@ -491,28 +508,17 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
         return res.json({ ok: true });
       }
 
-      const instructionsText = `📢 <b>РАССЫЛКА</b>
+      // Включаем режим рассылки
+      pendingReceipts.set(`broadcast_mode_${chatId}`, true);
 
-Чтобы отправить рассылку, отправьте сообщение в формате:
+      const instructionsText = `📢 <b>РЕЖИМ РАССЫЛКИ АКТИВИРОВАН</b>
 
-<code>/send
-Текст на русском
+Просто отправь следующее сообщение (текст, фото или видео), и оно будет разослано ВСЕМ клиентам.
 
----
-
-Қазақша мәтін</code>
-
-Разделитель между языками: <code>---</code>
-
-<b>Пример:</b>
-<code>/send
-🎉 Скидка 20% на все букеты!
-Только сегодня!
-
----
-
-🎉 Барлық шоқтарға 20% жеңілдік!
-Тек бүгін!</code>`;
+<b>Важно:</b>
+• Сообщение будет отправлено как есть
+• Все клиенты получат одинаковое сообщение
+• Для отмены отправь /cancel`;
 
       await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         chat_id: chatId,
@@ -521,7 +527,147 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
       });
     }
 
-    // Команда /send (отправка рассылки)
+    // Обработка сообщения в режиме рассылки
+    if (update.message && pendingReceipts.get(`broadcast_mode_${update.message.chat.id}`)) {
+      const chatId = update.message.chat.id;
+
+      if (chatId !== ADMIN_ID) {
+        return res.json({ ok: true });
+      }
+
+      // Отмена
+      if (update.message.text === '/cancel') {
+        pendingReceipts.delete(`broadcast_mode_${chatId}`);
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: chatId,
+          text: '❌ Рассылка отменена'
+        });
+        return res.json({ ok: true });
+      }
+
+      try {
+        // Получаем всех клиентов
+        const { data: customers } = await supabase
+          .from(getTableName('customers'))
+          .select('*');
+
+        if (!customers || customers.length === 0) {
+          await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            chat_id: chatId,
+            text: '❌ Нет клиентов для рассылки'
+          });
+          pendingReceipts.delete(`broadcast_mode_${chatId}`);
+          return res.json({ ok: true });
+        }
+
+        // Подтверждение
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: chatId,
+          text: `📢 Начинаю рассылку для ${customers.length} клиентов...`,
+          parse_mode: 'HTML'
+        });
+
+        let sentCount = 0;
+        let errorCount = 0;
+
+        // Определяем тип сообщения
+        const isPhoto = update.message.photo;
+        const isVideo = update.message.video;
+        const isText = update.message.text;
+
+        // Отправляем каждому клиенту
+        for (const customer of customers) {
+          try {
+            if (!customer.telegram_user_id) continue;
+
+            if (isPhoto) {
+              const photo = update.message.photo[update.message.photo.length - 1];
+              await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                chat_id: customer.telegram_user_id,
+                photo: photo.file_id,
+                caption: update.message.caption || '',
+                parse_mode: 'HTML'
+              });
+            } else if (isVideo) {
+              await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
+                chat_id: customer.telegram_user_id,
+                video: update.message.video.file_id,
+                caption: update.message.caption || '',
+                parse_mode: 'HTML'
+              });
+            } else if (isText) {
+              await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                chat_id: customer.telegram_user_id,
+                text: isText,
+                parse_mode: 'HTML'
+              });
+            }
+
+            sentCount++;
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+          } catch (error) {
+            errorCount++;
+            console.error(`Ошибка отправки ${customer.telegram_user_id}:`, error.message);
+          }
+        }
+
+        // Отчёт админу
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: chatId,
+          text: `✅ <b>Рассылка завершена!</b>\n\n📤 Отправлено: ${sentCount}\n❌ Ошибок: ${errorCount}`,
+          parse_mode: 'HTML'
+        });
+
+        // Выключаем режим рассылки
+        pendingReceipts.delete(`broadcast_mode_${chatId}`);
+
+      } catch (error) {
+        console.error('Ошибка рассылки:', error);
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: chatId,
+          text: '❌ Ошибка отправки рассылки'
+        });
+        pendingReceipts.delete(`broadcast_mode_${chatId}`);
+      }
+      return res.json({ ok: true });
+    }
+
+    // Кнопка "Каталог" (для админа)
+    if (update.message && update.message.text === '🌸 Каталог' && update.message.chat.id === ADMIN_ID) {
+      const chatId = update.message.chat.id;
+      await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        chat_id: chatId,
+        text: '🌸 Откройте каталог:',
+        reply_markup: {
+          inline_keyboard: [[
+            { 
+              text: '🌸 Открыть каталог',
+              web_app: { url: CLIENT_APP_URL }
+            }
+          ]]
+        }
+      });
+    }
+
+    // Кнопка "Админка" (для админа)
+    if (update.message && update.message.text === '⚙️ Админка' && update.message.chat.id === ADMIN_ID) {
+      const chatId = update.message.chat.id;
+      await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        chat_id: chatId,
+        text: '⚙️ Откройте админ-панель:',
+        reply_markup: {
+          inline_keyboard: [[
+            { 
+              text: '⚙️ Админ-панель',
+              web_app: { url: ADMIN_APP_URL }
+            }
+          ]]
+        }
+      });
+    }
+
+    // Старый метод /send (оставляем для совместимости)
     if (update.message && update.message.text && update.message.text.startsWith('/send')) {
       const chatId = update.message.chat.id;
 
