@@ -442,15 +442,17 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
       }
     }
 
-    // Обработка фото (чека)
+    // Обработка фото (чека или букета/доставки)
     if (update.message && update.message.photo) {
       const chatId = update.message.chat.id;
       const photo = update.message.photo[update.message.photo.length - 1];
       
-      const orderId = pendingReceipts.get(`waiting_${chatId}`);
+      // Проверяем - это чек от клиента или фото от админа?
+      const waitingReceipt = pendingReceipts.get(`waiting_${chatId}`);
       
-      if (orderId) {
-        const orderInfo = pendingReceipts.get(orderId);
+      // ВАРИАНТ 1: Клиент отправляет чек
+      if (waitingReceipt) {
+        const orderInfo = pendingReceipts.get(waitingReceipt);
         
         if (orderInfo) {
           let caption = "📸 <b>ЧЕК ОБ ОПЛАТЕ</b>\n\n";
@@ -466,8 +468,8 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
             parse_mode: 'HTML',
             reply_markup: {
               inline_keyboard: [[
-                { text: "✅ Подтвердить", callback_data: `confirm_payment_${orderId}` },
-                { text: "❌ Отклонить", callback_data: `reject_payment_${orderId}` }
+                { text: "✅ Подтвердить", callback_data: `confirm_payment_${waitingReceipt}` },
+                { text: "❌ Отклонить", callback_data: `reject_payment_${waitingReceipt}` }
               ]]
             }
           });
@@ -479,6 +481,73 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
           });
 
           pendingReceipts.delete(`waiting_${chatId}`);
+        }
+      }
+      // ВАРИАНТ 2: Админ отправляет фото букета/доставки
+      else if (chatId === ADMIN_ID) {
+        console.log('📸 Админ отправил фото, проверяем pendingReceipts...');
+        console.log('🔑 Все ключи:', Array.from(pendingReceipts.keys()));
+        
+        // Ищем ожидающее фото для этого админа
+        let foundKey = null;
+        let photoData = null;
+        
+        for (const [key, value] of pendingReceipts.entries()) {
+          if (key.startsWith(`photo_${ADMIN_ID}_`)) {
+            foundKey = key;
+            photoData = value;
+            break;
+          }
+        }
+        
+        if (foundKey && photoData) {
+          console.log('✅ Найдено ожидающее фото:', foundKey, photoData);
+          
+          const { orderId, customerId, photoType } = photoData;
+          
+          // Получаем язык клиента
+          const { data: customer } = await supabase
+            .from(getTableName('customers'))
+            .select('language_code')
+            .eq('telegram_user_id', customerId)
+            .single();
+          
+          const lang = customer?.language_code || 'ru';
+          
+          // Формируем сообщение
+          const messages = {
+            bouquet: {
+              ru: `💐 <b>Ваш букет готов!</b>\n\n📋 Заказ #${orderId}\n\nМы подготовили для вас красивый букет! 🌸`,
+              kk: `💐 <b>Сіздің шоғыңыз дайын!</b>\n\n📋 Тапсырыс #${orderId}\n\nБіз сіз үшін әдемі шоқ дайындадық! 🌸`
+            },
+            delivery: {
+              ru: `📦 <b>Букет доставлен!</b>\n\n📋 Заказ #${orderId}\n\nВаш заказ успешно доставлен! Спасибо за покупку! 🎉`,
+              kk: `📦 <b>Шоқ жеткізілді!</b>\n\n📋 Тапсырыс #${orderId}\n\nТапсырысыңыз сәтті жеткізілді! Сатып алғаныңызға рахмет! 🎉`
+            }
+          };
+          
+          const messageText = messages[photoType] ? messages[photoType][lang] : messages.bouquet[lang];
+          
+          // Отправляем фото клиенту
+          await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+            chat_id: customerId,
+            photo: photo.file_id,
+            caption: messageText,
+            parse_mode: 'HTML'
+          });
+          
+          // Подтверждаем админу
+          await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            chat_id: ADMIN_ID,
+            text: `✅ Фото отправлено клиенту!\n📋 Заказ #${orderId}`,
+            parse_mode: 'HTML'
+          });
+          
+          // Удаляем из ожидания
+          pendingReceipts.delete(foundKey);
+          console.log('🗑️ Удалили ключ:', foundKey);
+        } else {
+          console.log('❌ Не найдено ожидающих фото для админа');
         }
       }
     }
