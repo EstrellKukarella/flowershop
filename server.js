@@ -652,6 +652,33 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
           .eq('id', orderId)
           .single();
 
+        // СПИСЫВАЕМ ОСТАТКИ ТОВАРОВ
+        if (order && order.items) {
+          for (const item of order.items) {
+            // Получаем текущий товар
+            const { data: product } = await supabase
+              .from(getTableName('products'))
+              .select('stock')
+              .eq('name', item.name)
+              .single();
+
+            if (product && product.stock !== undefined) {
+              const newStock = Math.max(0, product.stock - item.quantity);
+              
+              // Обновляем остаток
+              await supabase
+                .from(getTableName('products'))
+                .update({ 
+                  stock: newStock,
+                  available: newStock > 0 // Автоматически скрываем если закончился
+                })
+                .eq('name', item.name);
+
+              console.log(`📦 Списание: ${item.name} -${item.quantity} (осталось: ${newStock})`);
+            }
+          }
+        }
+
         let lang = 'ru'; // По умолчанию русский
 
         if (order && order.telegram_user_id) {
