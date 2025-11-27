@@ -515,15 +515,20 @@
         }
       };
 
+      // Фильтруем товары: только доступные И с остатком > 0
+      const availableProducts = products.filter(p => 
+        p.available && (p.stock === undefined || p.stock > 0)
+      );
+
       const filteredProducts = selectedCategory === 'all' 
-        ? products 
+        ? availableProducts 
         : selectedCategory === 'new'
         ? (() => {
             const threeDaysAgo = new Date();
             threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-            return products.filter(p => new Date(p.created_at) >= threeDaysAgo);
+            return availableProducts.filter(p => new Date(p.created_at) >= threeDaysAgo);
           })()
-        : products.filter(p => p.category === selectedCategory);
+        : availableProducts.filter(p => p.category === selectedCategory);
       
       // Дополнительная фильтрация по поиску
       const searchedProducts = searchQuery.trim() 
