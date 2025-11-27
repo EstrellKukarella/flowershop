@@ -520,19 +520,19 @@
                       </div>
                     )}
 
-                    {/* Статус оплаты */}
-                    {!order.payment_confirmed && (
+                    {/* Статус оплаты - показываем только если заказ ожидает */}
+                    {order.status === 'pending' && (
                       <div className="mb-3 bg-yellow-50 p-3 rounded-lg border border-yellow-300">
                         <div className="flex items-center gap-2">
-                          <span className="text-yellow-700 font-medium">⚠️ Оплата не подтверждена</span>
+                          <span className="text-yellow-700 font-medium">⏳ Ожидает оплату</span>
                         </div>
                         <p className="text-xs text-yellow-600 mt-1">
-                          Клиент должен отправить чек. После проверки чека подтвердите оплату, чтобы отправить фото букета/доставки.
+                          Клиент должен отправить чек. После подтверждения чека статус изменится на "В работе".
                         </p>
                       </div>
                     )}
 
-                    {order.payment_confirmed && (
+                    {(order.status === 'processing' || order.status === 'ready' || order.status === 'delivered') && order.payment_confirmed && (
                       <div className="mb-3 bg-green-50 p-3 rounded-lg border border-green-300">
                         <div className="flex items-center gap-2">
                           <span className="text-green-700 font-medium">✅ Оплата подтверждена</span>
