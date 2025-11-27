@@ -325,6 +325,293 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
       });
     }
 
+    // Команда /stats (только для админа)
+    if (update.message && update.message.text === '/stats') {
+      const chatId = update.message.chat.id;
+
+      if (chatId !== ADMIN_ID) {
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: chatId,
+          text: '❌ Эта команда доступна только админу'
+        });
+        return res.json({ ok: true });
+      }
+
+      try {
+        // Получаем все данные
+        const { data: allOrders } = await supabase
+          .from(getTableName('orders'))
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        const { data: customers } = await supabase
+          .from(getTableName('customers'))
+          .select('*');
+
+        const { data: products } = await supabase
+          .from(getTableName('products'))
+          .select('*');
+
+        // Общая статистика
+        const totalOrders = allOrders?.filter(o => o.status === 'delivered').length || 0;
+        const totalRevenue = allOrders
+          ?.filter(o => o.status === 'delivered')
+          .reduce((sum, o) => sum + (o.total || 0), 0) || 0;
+        
+        const totalCustomers = customers?.length || 0;
+        const totalProducts = products?.length || 0;
+        const availableProducts = products?.filter(p => p.available).length || 0;
+        
+        // Средний чек
+        const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+
+        // Статистика за период
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        const todayOrders = allOrders?.filter(o => 
+          o.status === 'delivered' && new Date(o.created_at) >= todayStart
+        ).length || 0;
+        
+        const todayRevenue = allOrders
+          ?.filter(o => o.status === 'delivered' && new Date(o.created_at) >= todayStart)
+          .reduce((sum, o) => sum + (o.total || 0), 0) || 0;
+
+        const weekOrders = allOrders?.filter(o => 
+          o.status === 'delivered' && new Date(o.created_at) >= weekStart
+        ).length || 0;
+        
+        const weekRevenue = allOrders
+          ?.filter(o => o.status === 'delivered' && new Date(o.created_at) >= weekStart)
+          .reduce((sum, o) => sum + (o.total || 0), 0) || 0;
+
+        const monthOrders = allOrders?.filter(o => 
+          o.status === 'delivered' && new Date(o.created_at) >= monthStart
+        ).length || 0;
+        
+        const monthRevenue = allOrders
+          ?.filter(o => o.status === 'delivered' && new Date(o.created_at) >= monthStart)
+          .reduce((sum, o) => sum + (o.total || 0), 0) || 0;
+
+        // Статусы
+        const pendingOrders = allOrders?.filter(o => o.status === 'pending').length || 0;
+        const processingOrders = allOrders?.filter(o => o.status === 'processing').length || 0;
+        const readyOrders = allOrders?.filter(o => o.status === 'ready').length || 0;
+        const deliveredOrders = allOrders?.filter(o => o.status === 'delivered').length || 0;
+        const cancelledOrders = allOrders?.filter(o => o.status === 'cancelled').length || 0;
+
+        // Топ-3 популярных товаров
+        const productSales = {};
+        allOrders?.forEach(order => {
+          if (order.items) {
+            order.items.forEach(item => {
+              if (!productSales[item.name]) {
+                productSales[item.name] = { count: 0, revenue: 0 };
+              }
+              productSales[item.name].count += item.quantity;
+              productSales[item.name].revenue += item.price * item.quantity;
+            });
+          }
+        });
+        
+        const topProducts = Object.entries(productSales)
+          .sort((a, b) => b[1].count - a[1].count)
+          .slice(0, 3);
+
+        // Формируем сообщение
+        let statsText = '📊 <b>СТАТИСТИКА ЦВЕТОЧНОЙ ЛАВКИ</b>\n\n';
+        statsText += '━━━━━━━━━━━━━━━━━━━━\n';
+        statsText += '📈 <b>ОБЩАЯ СТАТИСТИКА</b>\n\n';
+        statsText += `💰 Общий доход: <b>${totalRevenue.toFixed(0)} ₸</b>\n`;
+        statsText += `📦 Всего заказов: <b>${totalOrders}</b>\n`;
+        statsText += `💵 Средний чек: <b>${avgOrderValue} ₸</b>\n`;
+        statsText += `👥 Клиентов: <b>${totalCustomers}</b>\n`;
+        statsText += `🌸 Товаров: <b>${totalProducts}</b> (в наличии: ${availableProducts})\n\n`;
+        
+        statsText += '━━━━━━━━━━━━━━━━━━━━\n';
+        statsText += '📅 <b>ЗА СЕГОДНЯ</b>\n\n';
+        statsText += `📦 Заказов: <b>${todayOrders}</b>\n`;
+        statsText += `💰 Доход: <b>${todayRevenue.toFixed(0)} ₸</b>\n\n`;
+        
+        statsText += '━━━━━━━━━━━━━━━━━━━━\n';
+        statsText += '📅 <b>ЗА НЕДЕЛЮ</b>\n\n';
+        statsText += `📦 Заказов: <b>${weekOrders}</b>\n`;
+        statsText += `💰 Доход: <b>${weekRevenue.toFixed(0)} ₸</b>\n\n`;
+        
+        statsText += '━━━━━━━━━━━━━━━━━━━━\n';
+        statsText += '📅 <b>ЗА МЕСЯЦ</b>\n\n';
+        statsText += `📦 Заказов: <b>${monthOrders}</b>\n`;
+        statsText += `💰 Доход: <b>${monthRevenue.toFixed(0)} ₸</b>\n\n`;
+        
+        statsText += '━━━━━━━━━━━━━━━━━━━━\n';
+        statsText += '📋 <b>СТАТУСЫ ЗАКАЗОВ</b>\n\n';
+        statsText += `⏰ Ожидают: <b>${pendingOrders}</b>\n`;
+        statsText += `👨‍🍳 В работе: <b>${processingOrders}</b>\n`;
+        statsText += `✅ Готовы: <b>${readyOrders}</b>\n`;
+        statsText += `🎉 Доставлено: <b>${deliveredOrders}</b>\n`;
+        statsText += `❌ Отменено: <b>${cancelledOrders}</b>\n\n`;
+        
+        if (topProducts.length > 0) {
+          statsText += '━━━━━━━━━━━━━━━━━━━━\n';
+          statsText += '🏆 <b>ТОП-3 ТОВАРОВ</b>\n\n';
+          topProducts.forEach((p, i) => {
+            statsText += `${i + 1}. ${p[0]}: ${p[1].count} шт (${p[1].revenue} ₸)\n`;
+          });
+          statsText += '\n';
+        }
+        
+        statsText += '━━━━━━━━━━━━━━━━━━━━\n';
+        statsText += `🕐 Обновлено: ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Almaty' })}`;
+
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: chatId,
+          text: statsText,
+          parse_mode: 'HTML'
+        });
+      } catch (error) {
+        console.error('Ошибка получения статистики:', error);
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: chatId,
+          text: '❌ Ошибка получения статистики'
+        });
+      }
+    }
+
+    // Команда /broadcast (только для админа)
+    if (update.message && update.message.text === '/broadcast') {
+      const chatId = update.message.chat.id;
+
+      if (chatId !== ADMIN_ID) {
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: chatId,
+          text: '❌ Эта команда доступна только админу'
+        });
+        return res.json({ ok: true });
+      }
+
+      const instructionsText = `📢 <b>РАССЫЛКА</b>
+
+Чтобы отправить рассылку, отправьте сообщение в формате:
+
+<code>/send
+Текст на русском
+
+---
+
+Қазақша мәтін</code>
+
+Разделитель между языками: <code>---</code>
+
+<b>Пример:</b>
+<code>/send
+🎉 Скидка 20% на все букеты!
+Только сегодня!
+
+---
+
+🎉 Барлық шоқтарға 20% жеңілдік!
+Тек бүгін!</code>`;
+
+      await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        chat_id: chatId,
+        text: instructionsText,
+        parse_mode: 'HTML'
+      });
+    }
+
+    // Команда /send (отправка рассылки)
+    if (update.message && update.message.text && update.message.text.startsWith('/send')) {
+      const chatId = update.message.chat.id;
+
+      if (chatId !== ADMIN_ID) {
+        return res.json({ ok: true });
+      }
+
+      try {
+        const fullText = update.message.text.replace('/send', '').trim();
+        
+        if (!fullText.includes('---')) {
+          await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            chat_id: chatId,
+            text: '❌ Неверный формат! Используйте разделитель ---\n\nИспользуйте /broadcast для инструкций'
+          });
+          return res.json({ ok: true });
+        }
+
+        const [messageRu, messageKk] = fullText.split('---').map(s => s.trim());
+
+        if (!messageRu || !messageKk) {
+          await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            chat_id: chatId,
+            text: '❌ Заполните сообщения на обоих языках!'
+          });
+          return res.json({ ok: true });
+        }
+
+        // Получаем всех клиентов
+        const { data: customers } = await supabase
+          .from(getTableName('customers'))
+          .select('*');
+
+        if (!customers || customers.length === 0) {
+          await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            chat_id: chatId,
+            text: '❌ Нет клиентов для рассылки'
+          });
+          return res.json({ ok: true });
+        }
+
+        // Подтверждение
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: chatId,
+          text: `📢 Начинаю рассылку для ${customers.length} клиентов...`,
+          parse_mode: 'HTML'
+        });
+
+        let sentCount = 0;
+        let errorCount = 0;
+
+        // Отправляем каждому клиенту
+        for (const customer of customers) {
+          try {
+            if (!customer.telegram_user_id) continue;
+
+            const lang = customer.language_code || 'ru';
+            const message = lang === 'kk' ? messageKk : messageRu;
+
+            await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+              chat_id: customer.telegram_user_id,
+              text: message,
+              parse_mode: 'HTML'
+            });
+
+            sentCount++;
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+          } catch (error) {
+            errorCount++;
+            console.error(`Ошибка отправки ${customer.telegram_user_id}:`, error.message);
+          }
+        }
+
+        // Отчёт админу
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: chatId,
+          text: `✅ <b>Рассылка завершена!</b>\n\n📤 Отправлено: ${sentCount}\n❌ Ошибок: ${errorCount}`,
+          parse_mode: 'HTML'
+        });
+
+      } catch (error) {
+        console.error('Ошибка рассылки:', error);
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: chatId,
+          text: '❌ Ошибка отправки рассылки'
+        });
+      }
+    }
+
     // Обработка callback (чеки)
     if (update.callback_query) {
       const callbackQuery = update.callback_query;
@@ -610,6 +897,62 @@ app.post('/api/send-photo-prompt', async (req, res) => {
 
   } catch (error) {
     console.error('Ошибка отправки запроса на фото:', error);
+    res.status(500).json({ error: 'Ошибка' });
+  }
+});
+
+// API: Рассылка сообщений
+app.post('/api/send-broadcast', async (req, res) => {
+  try {
+    const { messageRu, messageKk, customers } = req.body;
+
+    if (!messageRu || !messageKk || !customers) {
+      return res.status(400).json({ error: 'Неверные данные' });
+    }
+
+    console.log(`📢 Начинаем рассылку для ${customers.length} клиентов...`);
+
+    let sentCount = 0;
+    let errorCount = 0;
+
+    // Отправляем каждому клиенту
+    for (const customer of customers) {
+      try {
+        if (!customer.telegram_user_id) continue;
+
+        // Определяем язык клиента
+        const lang = customer.language_code || 'ru';
+        const message = lang === 'kk' ? messageKk : messageRu;
+
+        // Отправляем сообщение
+        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          chat_id: customer.telegram_user_id,
+          text: message,
+          parse_mode: 'HTML'
+        });
+
+        sentCount++;
+        console.log(`✅ Отправлено: ${customer.first_name} (${customer.telegram_user_id})`);
+
+        // Небольшая задержка чтобы не превысить лимиты Telegram
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+      } catch (error) {
+        errorCount++;
+        console.error(`❌ Ошибка отправки ${customer.telegram_user_id}:`, error.message);
+      }
+    }
+
+    console.log(`📊 Рассылка завершена: ${sentCount} отправлено, ${errorCount} ошибок`);
+
+    res.json({ 
+      success: true, 
+      sent: sentCount, 
+      errors: errorCount 
+    });
+
+  } catch (error) {
+    console.error('Ошибка рассылки:', error);
     res.status(500).json({ error: 'Ошибка' });
   }
 });
