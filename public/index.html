@@ -92,6 +92,7 @@
       const [loading, setLoading] = useState(true);
       const [supabase, setSupabase] = useState(null);
       const [showCashbackHistory, setShowCashbackHistory] = useState(false);
+      const [isSubmitting, setIsSubmitting] = useState(false); // Защита от двойного клика
 
       const tg = window.Telegram?.WebApp;
 
@@ -345,10 +346,17 @@
       };
 
       const submitOrder = async () => {
+        // Защита от двойного клика
+        if (isSubmitting) {
+          return;
+        }
+
         if (cart.length === 0) {
           showToast(lang === 'kk' ? 'Себет бос' : 'Корзина пуста', 'error');
           return;
         }
+        
+        setIsSubmitting(true); // Блокируем кнопку
         
         const name = document.getElementById('customerName')?.value?.trim();
         const phone = document.getElementById('customerPhone')?.value?.replace(/\s/g, '').trim(); // Убираем пробелы
@@ -361,11 +369,13 @@
         
         if (!name || !phone) {
           showToast(lang === 'kk' ? 'Толтырыңыз барлық өрістерді' : 'Заполните все поля', 'error');
+          setIsSubmitting(false); // Разблокируем
           return;
         }
         
         if (deliveryType === 'delivery' && (!deliveryAddress || !deliveryDate || !deliveryTime)) {
           showToast(lang === 'kk' ? 'Жеткізу мәліметтерін толтырыңыз' : 'Заполните данные доставки', 'error');
+          setIsSubmitting(false); // Разблокируем
           return;
         }
         
@@ -442,6 +452,7 @@
           setCart([]);
           setUseCashback(false);
           setCashbackAmount(0);
+          setIsSubmitting(false); // Разблокируем после успеха
           setView('orders');
           showToast(t.orderSuccess);
           loadData(supabase);
@@ -449,6 +460,7 @@
         } catch (error) {
           console.error('Ошибка заказа:', error);
           showToast(lang === 'kk' ? 'Қате орын алды' : 'Произошла ошибка', 'error');
+          setIsSubmitting(false); // Разблокируем после ошибки
         }
       };
 
@@ -1040,9 +1052,17 @@
                     </div>
                     <button
                       onClick={submitOrder}
-                      className="w-full bg-white text-black py-3 rounded-xl font-bold text-lg"
+                      disabled={isSubmitting}
+                      className={`w-full py-3 rounded-xl font-bold text-lg ${
+                        isSubmitting 
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                          : 'bg-white text-black'
+                      }`}
                     >
-                      {t.order}
+                      {isSubmitting 
+                        ? (lang === 'kk' ? '⏳ Жіберілуде...' : '⏳ Оформление...')
+                        : t.order
+                      }
                     </button>
                   </div>
                 </div>
