@@ -356,10 +356,7 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
         
         await supabase
           .from(getTableName('orders'))
-          .update({ 
-            status: 'processing',
-            payment_confirmed: true 
-          })
+          .update({ status: 'processing' })
           .eq('id', orderId);
 
         const { data: order } = await supabase
