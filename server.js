@@ -113,15 +113,9 @@ app.post('/api/send-order', async (req, res) => {
       customerName, 
       customerPhone, 
       customerComment,
-      deliveryType,
-      deliveryAddress,
-      deliveryDate,
-      deliveryTime,
       telegramUserId, 
       telegramUsername, 
       items, 
-      subtotal,
-      cashbackUsed,
       total,
       paymentEnabled,
       kaspiPhone,
@@ -134,46 +128,22 @@ app.post('/api/send-order', async (req, res) => {
 
     // Сообщение админу
     let message = "🆕 <b>НОВЫЙ ЗАКАЗ!</b>\n\n";
-    message += `📋 Заказ #${orderId}\n`;
+    message += `📋 Заказ #${orderId.slice(-6)}\n`;
     message += `📅 ${formatDateTimeAstana(date)}\n\n`;
     
     message += "<b>👤 Клиент:</b>\n";
     message += `Имя: ${customerName}\n`;
-    message += `Телефон: +7${customerPhone}\n`;
+    message += `Телефон: ${customerPhone}\n`;
     if (telegramUsername) message += `Telegram: @${telegramUsername}\n`;
     if (telegramUserId) message += `ID: ${telegramUserId}\n`;
-    
-    // Информация о доставке
-    if (deliveryType === 'delivery') {
-      message += `\n<b>🚚 Доставка:</b>\n`;
-      message += `📍 Адрес: ${deliveryAddress}\n`;
-      message += `📅 Дата: ${deliveryDate}\n`;
-      message += `⏰ Время: ${deliveryTime}\n`;
-    } else {
-      message += `\n<b>🏪 Самовывоз</b>\n`;
-    }
-    
-    if (customerComment) message += `\n💬 Комментарий: ${customerComment}\n`;
+    if (customerComment) message += `\nКомментарий: ${customerComment}\n`;
     
     message += "\n<b>💐 Товары:</b>\n";
     items.forEach(item => {
       message += `• ${item.name} x${item.quantity} = ${item.price * item.quantity} ₸\n`;
     });
     
-    // Детальная информация об оплате
-    message += "\n━━━━━━━━━━━━━━━━━━━━";
-    message += "\n<b>💳 ОПЛАТА:</b>\n";
-    
-    if (cashbackUsed && cashbackUsed > 0) {
-      message += `\n<b>Сумма товаров:</b> ${subtotal} ₸`;
-      message += `\n<b>💰 Оплачено кэшбеком:</b> <code>-${cashbackUsed} ₸</code>`;
-      message += `\n<b>💵 К оплате деньгами:</b> <code>${total} ₸</code>`;
-      message += `\n\n✅ Клиент использовал кэшбек`;
-    } else {
-      message += `\n<b>💵 К оплате:</b> <code>${total} ₸</code>`;
-      message += `\n\n💰 Кэшбек не использован`;
-    }
-    message += "\n━━━━━━━━━━━━━━━━━━━━";
+    message += `\n<b>💰 Итого: ${total} ₸</b>`;
 
     if (paymentEnabled) {
       message += `\n\n⏰ <b>Статус:</b> Ожидает оплаты`;
@@ -189,7 +159,7 @@ app.post('/api/send-order', async (req, res) => {
     // Если включены платежи
     if (paymentEnabled && telegramUserId) {
       let paymentMessage = "💳 <b>Реквизиты для оплаты / Төлем деректемелері</b>\n\n";
-      paymentMessage += `📋 Заказ / Тапсырыс #${orderId}\n`;
+      paymentMessage += `📋 Заказ / Тапсырыс #${orderId.slice(-6)}\n`;
       paymentMessage += `💰 Сумма / Сомасы: <b>${total} ₸</b>\n\n`;
       
       if (kaspiPhone) {
@@ -223,59 +193,10 @@ app.post('/api/send-order', async (req, res) => {
 
       pendingReceipts.set(orderId, {
         userId: telegramUserId,
-        orderNumber: orderId, // Полный номер
+        orderNumber: orderId.slice(-6),
         total: total,
         customerName: customerName
       });
-    }
-
-    // Отправляем подтверждение клиенту (всегда, даже если нет оплаты)
-    if (telegramUserId) {
-      let confirmMessage = "✅ <b>Заказ оформлен! / Тапсырыс рәсімделді!</b>\n\n";
-      confirmMessage += `📋 Заказ / Тапсырыс #${orderId}\n`;
-      confirmMessage += `💰 Сумма / Сомасы: <b>${total} ₸</b>\n\n`;
-      
-      // Если самовывоз - показываем адрес магазина
-      if (deliveryType === 'pickup') {
-        confirmMessage += "🏪 <b>Самовывоз / Өзім алу</b>\n\n";
-        
-        // Загружаем настройки из БД
-        const { data: shopSettings } = await supabase
-          .from('flowers_settings')
-          .select('contact_address, working_hours, contact_phone')
-          .eq('id', 1)
-          .single();
-        
-        if (shopSettings?.contact_address) {
-          confirmMessage += `📍 <b>Адрес / Мекенжай:</b> ${shopSettings.contact_address}\n`;
-        }
-        if (shopSettings?.working_hours) {
-          confirmMessage += `⏰ <b>Режим работы / Жұмыс уақыты:</b> ${shopSettings.working_hours}\n`;
-        }
-        if (shopSettings?.contact_phone) {
-          confirmMessage += `📞 <b>Телефон / Байланыс:</b> ${shopSettings.contact_phone}\n`;
-        }
-        
-        confirmMessage += "\n✅ Мы свяжемся с вами когда заказ будет готов!\n";
-        confirmMessage += "✅ Тапсырыс дайын болғанда сізге хабарласамыз!\n";
-      } else {
-        confirmMessage += `🚚 <b>Доставка / Жеткізу</b>\n`;
-        confirmMessage += `📍 ${deliveryAddress}\n`;
-        confirmMessage += `📅 ${deliveryDate} ⏰ ${deliveryTime}\n\n`;
-        confirmMessage += "✅ Мы свяжемся с вами перед доставкой!\n";
-        confirmMessage += "✅ Жеткізу алдында сізге хабарласамыз!\n";
-      }
-      
-      if (!paymentEnabled) {
-        confirmMessage += "\nИнформация об оплате придёт в чат 💬\n";
-        confirmMessage += "Төлем туралы ақпарат чатқа келеді 💬";
-        
-        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          chat_id: telegramUserId,
-          text: confirmMessage,
-          parse_mode: 'HTML'
-        });
-      }
     }
 
     res.json({ success: true, message: 'Заказ успешно отправлен' });
@@ -292,7 +213,7 @@ app.post('/api/send-order', async (req, res) => {
 // API: Изменение статуса заказа
 app.post('/api/notify-status', async (req, res) => {
   try {
-    const { userId, status, orderNumber, shopPhone, orderId } = req.body;
+    const { userId, status, orderNumber, shopPhone } = req.body;
 
     if (!userId || !status || !orderNumber) {
       return res.status(400).json({ error: 'Неверные данные' });
@@ -326,82 +247,7 @@ app.post('/api/notify-status', async (req, res) => {
       return res.status(400).json({ error: 'Неизвестный статус' });
     }
 
-    // Если заказ доставлен - начисляем кэшбек 5%
-    if (status === 'delivered' && orderId) {
-      try {
-        // Получаем заказ
-        const { data: order } = await supabase
-          .from(getTableName('orders'))
-          .select('*')
-          .eq('id', orderId)
-          .single();
-
-        if (order && order.total) {
-          const cashbackAmount = Math.floor(order.total * 0.05); // 5% кэшбека
-          
-          // Получаем текущий баланс клиента
-          let { data: customer } = await supabase
-            .from(getTableName('customers'))
-            .select('cashback_balance, total_orders')
-            .eq('telegram_user_id', userId)
-            .single();
-
-          // Если клиента нет - создаём
-          if (!customer) {
-            await supabase
-              .from(getTableName('customers'))
-              .insert({
-                telegram_user_id: userId,
-                cashback_balance: 0,
-                total_orders: 0
-              });
-            
-            customer = { cashback_balance: 0, total_orders: 0 };
-          }
-
-          const currentBalance = customer?.cashback_balance || 0;
-          const currentTotalOrders = customer?.total_orders || 0;
-          const newBalance = currentBalance + cashbackAmount;
-
-          // Обновляем баланс и счётчик заказов
-          await supabase
-            .from(getTableName('customers'))
-            .update({ 
-              cashback_balance: newBalance,
-              total_orders: currentTotalOrders + 1
-            })
-            .eq('telegram_user_id', userId);
-
-          // Создаём транзакцию
-          await supabase
-            .from(getTableName('cashback_transactions'))
-            .insert({
-              telegram_user_id: userId,
-              order_id: orderId,
-              type: 'earned',
-              amount: cashbackAmount,
-              balance_after: newBalance
-            });
-
-          // Добавляем инфо о кэшбеке в сообщение
-          const cashbackMessage = `\n\n💰 <b>Вам начислен кэшбек: ${cashbackAmount} ₸</b>\nИспользуйте при следующем заказе!\n\n🇰🇿 <b>Сізге кэшбек жинақталды: ${cashbackAmount} ₸</b>\nКелесі тапсырыста пайдаланыңыз!`;
-          
-          const fullMessage = messages.ru + '\n\n' + messages.kk + cashbackMessage;
-          
-          await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-            chat_id: userId,
-            text: fullMessage,
-            parse_mode: 'HTML'
-          });
-          
-          return res.json({ success: true });
-        }
-      } catch (error) {
-        console.error('Ошибка начисления кэшбека:', error);
-      }
-    }
-
-    // Отправляем обычное уведомление для других статусов
+    // Отправляем оба языка
     const fullMessage = messages.ru + '\n\n' + messages.kk;
 
     await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -421,167 +267,11 @@ app.post('/api/notify-status', async (req, res) => {
   }
 });
 
-// API: Запрос на отправку фото клиенту
-app.post('/api/send-photo-prompt', async (req, res) => {
-  try {
-    const { orderId, telegramUserId, photoType } = req.body;
-
-    console.log('📸 Запрос на фото:', { orderId, telegramUserId, photoType });
-
-    if (!orderId || !telegramUserId || !photoType) {
-      return res.status(400).json({ error: 'Неверные данные' });
-    }
-
-    // Сохраняем ожидание фото от админа
-    // ВАЖНО: добавляем photoType в ключ чтобы можно было отправить букет И доставку!
-    const key = `photo_${ADMIN_ID}_${orderId}_${photoType}`;
-    pendingReceipts.set(key, {
-      orderId,
-      customerId: telegramUserId,
-      photoType
-    });
-    
-    console.log('✅ Сохранили в pendingReceipts:', key);
-    console.log('📋 Текущие ключи:', Array.from(pendingReceipts.keys()));
-
-    const messages = {
-      bouquet: {
-        ru: '💐 <b>Отправьте фото букета</b>\n\nЗагрузите фото готового букета для заказа #' + orderId + '\n\nКлиент получит это фото с сообщением.',
-        kk: '💐 <b>Шоқ фотосын жіберіңіз</b>\n\nТапсырыс #' + orderId + ' үшін дайын шоқтың фотосын жүктеңіз\n\nКлиент бұл фотоны хабарламамен алады.'
-      },
-      delivery: {
-        ru: '📦 <b>Отправьте фото доставки</b>\n\nЗагрузите фото доставленного букета для заказа #' + orderId + '\n\nКлиент получит подтверждение доставки.',
-        kk: '📦 <b>Жеткізу фотосын жіберіңіз</b>\n\nТапсырыс #' + orderId + ' үшін жеткізілген шоқтың фотосын жүктеңіз\n\nКлиент жеткізу растамасын алады.'
-      }
-    };
-
-    const message = messages[photoType] || messages.bouquet;
-
-    await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-      chat_id: ADMIN_ID,
-      text: message.ru + '\n\n' + message.kk,
-      parse_mode: 'HTML',
-      reply_markup: {
-        inline_keyboard: [[
-          { text: '❌ Отменить', callback_data: `cancel_photo_${orderId}_${photoType}` }
-        ]]
-      }
-    });
-
-    res.json({ success: true });
-
-  } catch (error) {
-    console.error('Ошибка отправки запроса на фото:', error);
-    res.status(500).json({ error: 'Ошибка' });
-  }
-});
-
 // Webhook обработчик
 app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
   try {
     const update = req.body;
 
-    // ===== ОБРАБОТКА РАССЫЛКИ (В ПЕРВУЮ ОЧЕРЕДЬ!) =====
-    if (update.message && pendingReceipts.has(`broadcast_${update.message.from.id}`)) {
-      const userId = update.message.from.id;
-      
-      if (userId !== ADMIN_ID) return res.json({ ok: true });
-      
-      // Игнорируем системные кнопки и команды
-      const ignoredTexts = ['📢 Рассылка', '📊 Статистика', '⚙️ Админ-панель'];
-      if (update.message.text && ignoredTexts.includes(update.message.text)) {
-        return res.json({ ok: true });
-      }
-      
-      // Отмена
-      if (update.message.text === '/cancel') {
-        pendingReceipts.delete(`broadcast_${userId}`);
-        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          chat_id: userId,
-          text: '❌ Рассылка отменена'
-        });
-        return res.json({ ok: true });
-      }
-      
-      // Проверяем что сообщение не пустое
-      if (!update.message.photo && !update.message.video && (!update.message.text || update.message.text.trim() === '')) {
-        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          chat_id: userId,
-          text: '❌ Отправьте непустое сообщение или нажмите /cancel для отмены'
-        });
-        return res.json({ ok: true });
-      }
-      
-      // Получаем всех клиентов
-      const { data: customers } = await supabase
-        .from(getTableName('customers'))
-        .select('telegram_user_id');
-      
-      if (!customers || customers.length === 0) {
-        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          chat_id: userId,
-          text: '❌ Нет клиентов в базе данных'
-        });
-        pendingReceipts.delete(`broadcast_${userId}`);
-        return res.json({ ok: true });
-      }
-      
-      let successCount = 0;
-      let failCount = 0;
-      
-      // Отправляем сообщение
-      for (const customer of customers) {
-        try {
-          if (update.message.photo) {
-            // Отправляем фото
-            const photo = update.message.photo[update.message.photo.length - 1];
-            await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-              chat_id: customer.telegram_user_id,
-              photo: photo.file_id,
-              caption: update.message.caption || ''
-            });
-          } else if (update.message.video) {
-            // Отправляем видео
-            await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
-              chat_id: customer.telegram_user_id,
-              video: update.message.video.file_id,
-              caption: update.message.caption || ''
-            });
-          } else if (update.message.text) {
-            // Отправляем текст
-            await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-              chat_id: customer.telegram_user_id,
-              text: update.message.text,
-              parse_mode: 'HTML'
-            });
-          }
-          successCount++;
-        } catch (error) {
-          console.error(`Ошибка отправки клиенту ${customer.telegram_user_id}:`, error.message);
-          failCount++;
-        }
-        
-        // Небольшая задержка между сообщениями
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      
-      // Отчёт админу
-      await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-        chat_id: userId,
-        text: `✅ <b>Рассылка завершена!</b>
-
-📊 Статистика:
-✅ Отправлено: ${successCount}
-❌ Ошибок: ${failCount}
-📧 Всего клиентов: ${customers.length}`,
-        parse_mode: 'HTML'
-      });
-      
-      pendingReceipts.delete(`broadcast_${userId}`);
-      return res.json({ ok: true });
-    }
-
-    // ===== ОБЫЧНЫЕ КОМАНДЫ =====
     // Обработка команды /start
     if (update.message && update.message.text && update.message.text.startsWith('/start')) {
       const chatId = update.message.chat.id;
@@ -608,8 +298,7 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
 
       const welcomeText = getWelcomeText(firstName, languageCode);
 
-      // Inline кнопки (в сообщении)
-      const inlineKeyboard = {
+      const keyboard = {
         inline_keyboard: [[
           { 
             text: languageCode === 'kk' ? '🌸 Гүл таңдау' : '🌸 Выбрать букет',
@@ -618,9 +307,9 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
         ]]
       };
 
-      // Если админ - добавляем кнопку админки в inline
+      // Если админ
       if (chatId === ADMIN_ID) {
-        inlineKeyboard.inline_keyboard.push([
+        keyboard.inline_keyboard.push([
           { 
             text: '⚙️ Админ-панель',
             web_app: { url: ADMIN_APP_URL }
@@ -628,212 +317,12 @@ app.post(['/webhook', `/bot${BOT_TOKEN}`], async (req, res) => {
         ]);
       }
 
-      // Постоянная клавиатура снизу (reply keyboard)
-      const replyKeyboard = {
-        keyboard: [[
-          { text: languageCode === 'kk' ? '🌸 Гүл каталогы' : '🌸 Цветочная', web_app: { url: CLIENT_APP_URL } }
-        ]],
-        resize_keyboard: true,
-        persistent: true
-      };
-
-      // Если админ - добавляем админские кнопки снизу
-      if (chatId === ADMIN_ID) {
-        replyKeyboard.keyboard.push([
-          { text: '⚙️ Админ-панель', web_app: { url: ADMIN_APP_URL } }
-        ]);
-        replyKeyboard.keyboard.push([
-          { text: '📊 Статистика' },
-          { text: '📢 Рассылка' }
-        ]);
-      }
-
-      // Отправляем сообщение с inline кнопками
       await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         chat_id: chatId,
         text: welcomeText,
         parse_mode: 'HTML',
-        reply_markup: inlineKeyboard
+        reply_markup: keyboard
       });
-
-      // Отправляем постоянную клавиатуру снизу
-      await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-        chat_id: chatId,
-        text: languageCode === 'kk' ? '✨ Төмендегі батырмаларды пайдаланыңыз:' : '✨ Используйте кнопки ниже:',
-        reply_markup: replyKeyboard
-      });
-    }
-
-    // Обработка кнопки "Статистика" (только для админа)
-    if (update.message && update.message.text === '📊 Статистика') {
-      const chatId = update.message.chat.id;
-      const userId = update.message.from.id;
-
-      if (userId === ADMIN_ID) {
-        try {
-          // Получаем статистику из БД
-          const { data: allOrders } = await supabase
-            .from(getTableName('orders'))
-            .select('*');
-
-          const { data: customers } = await supabase
-            .from(getTableName('customers'))
-            .select('*');
-
-          const { data: products } = await supabase
-            .from(getTableName('products'))
-            .select('*');
-
-          // Подсчёты
-          const totalOrders = allOrders?.length || 0;
-          const totalRevenue = allOrders?.reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0) || 0;
-          
-          const pendingOrders = allOrders?.filter(o => o.status === 'pending').length || 0;
-          const processingOrders = allOrders?.filter(o => o.status === 'processing').length || 0;
-          const readyOrders = allOrders?.filter(o => o.status === 'ready').length || 0;
-          const deliveredOrders = allOrders?.filter(o => o.status === 'delivered').length || 0;
-          const cancelledOrders = allOrders?.filter(o => o.status === 'cancelled').length || 0;
-
-          const totalCustomers = customers?.length || 0;
-          const totalProducts = products?.length || 0;
-          const availableProducts = products?.filter(p => p.available).length || 0;
-
-          // Статистика за сегодня
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const todayOrders = allOrders?.filter(o => new Date(o.created_at) >= today).length || 0;
-          const todayRevenue = allOrders?.filter(o => new Date(o.created_at) >= today)
-            .reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0) || 0;
-
-          // Статистика за неделю
-          const weekAgo = new Date();
-          weekAgo.setDate(weekAgo.getDate() - 7);
-          const weekOrders = allOrders?.filter(o => new Date(o.created_at) >= weekAgo).length || 0;
-          const weekRevenue = allOrders?.filter(o => new Date(o.created_at) >= weekAgo)
-            .reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0) || 0;
-
-          // Статистика за месяц
-          const monthAgo = new Date();
-          monthAgo.setDate(monthAgo.getDate() - 30);
-          const monthOrders = allOrders?.filter(o => new Date(o.created_at) >= monthAgo).length || 0;
-          const monthRevenue = allOrders?.filter(o => new Date(o.created_at) >= monthAgo)
-            .reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0) || 0;
-
-          // Средний чек
-          const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
-
-          // Топ-3 популярных товаров
-          const productSales = {};
-          allOrders?.forEach(order => {
-            order.items?.forEach(item => {
-              if (!productSales[item.name]) {
-                productSales[item.name] = { count: 0, revenue: 0 };
-              }
-              productSales[item.name].count += item.quantity;
-              productSales[item.name].revenue += item.price * item.quantity;
-            });
-          });
-          
-          const topProducts = Object.entries(productSales)
-            .sort((a, b) => b[1].count - a[1].count)
-            .slice(0, 3);
-
-          const statsMessage = `📊 <b>СТАТИСТИКА ЦВЕТОЧНОЙ ЛАВКИ</b>
-
-━━━━━━━━━━━━━━━━━━━━
-📈 <b>ОБЩАЯ СТАТИСТИКА</b>
-
-💰 Общий доход: <b>${totalRevenue.toFixed(0)} ₸</b>
-📦 Всего заказов: <b>${totalOrders}</b>
-💵 Средний чек: <b>${avgOrderValue} ₸</b>
-👥 Клиентов: <b>${totalCustomers}</b>
-🌸 Товаров: <b>${totalProducts}</b> (в наличии: ${availableProducts})
-
-━━━━━━━━━━━━━━━━━━━━
-📅 <b>ЗА СЕГОДНЯ</b>
-
-📦 Заказов: <b>${todayOrders}</b>
-💰 Доход: <b>${todayRevenue.toFixed(0)} ₸</b>
-
-━━━━━━━━━━━━━━━━━━━━
-📅 <b>ЗА НЕДЕЛЮ</b>
-
-📦 Заказов: <b>${weekOrders}</b>
-💰 Доход: <b>${weekRevenue.toFixed(0)} ₸</b>
-
-━━━━━━━━━━━━━━━━━━━━
-📅 <b>ЗА МЕСЯЦ</b>
-
-📦 Заказов: <b>${monthOrders}</b>
-💰 Доход: <b>${monthRevenue.toFixed(0)} ₸</b>
-
-━━━━━━━━━━━━━━━━━━━━
-📋 <b>СТАТУСЫ ЗАКАЗОВ</b>
-
-⏰ Ожидают: <b>${pendingOrders}</b>
-👨‍🍳 В работе: <b>${processingOrders}</b>
-✅ Готовы: <b>${readyOrders}</b>
-🎉 Доставлено: <b>${deliveredOrders}</b>
-❌ Отменено: <b>${cancelledOrders}</b>
-
-${topProducts.length > 0 ? `━━━━━━━━━━━━━━━━━━━━
-🏆 <b>ТОП-3 ТОВАРОВ</b>
-
-${topProducts.map((p, i) => `${i + 1}. ${p[0]}: ${p[1].count} шт (${p[1].revenue} ₸)`).join('\n')}
-` : ''}
-━━━━━━━━━━━━━━━━━━━━
-🕐 Обновлено: ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Almaty' })}`;
-
-          await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-            chat_id: chatId,
-            text: statsMessage,
-            parse_mode: 'HTML'
-          });
-        } catch (error) {
-          console.error('Ошибка получения статистики:', error);
-          await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-            chat_id: chatId,
-            text: '❌ Ошибка получения статистики'
-          });
-        }
-      } else {
-        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          chat_id: chatId,
-          text: '❌ Эта функция доступна только администраторам'
-        });
-      }
-    }
-
-    // Обработка кнопки "Рассылка" (только для админа)
-    if (update.message && update.message.text === '📢 Рассылка') {
-      const chatId = update.message.chat.id;
-      const userId = update.message.from.id;
-
-      if (userId === ADMIN_ID) {
-        pendingReceipts.set(`broadcast_${userId}`, 'waiting');
-        
-        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          chat_id: chatId,
-          text: `📢 <b>Рассылка сообщений</b>
-
-Отправьте сообщение, которое хотите разослать всем клиентам.
-
-Поддерживаются:
-• Текст
-• Фото с подписью
-• Видео с подписью
-
-Сообщение будет отправлено всем клиентам из базы данных.
-
-Нажмите /cancel чтобы отменить.`,
-          parse_mode: 'HTML'
-        });
-      } else {
-        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          chat_id: chatId,
-          text: '❌ Эта функция доступна только администраторам'
-        });
-      }
     }
 
     // Обработка callback (чеки)
@@ -842,32 +331,6 @@ ${topProducts.map((p, i) => `${i + 1}. ${p[0]}: ${p[1].count} шт (${p[1].reven
       const chatId = callbackQuery.message.chat.id;
       const messageId = callbackQuery.message.message_id;
       const data = callbackQuery.data;
-
-      // Отмена отправки фото
-      if (data.startsWith('cancel_photo_')) {
-        // Формат: cancel_photo_12345_bouquet
-        const parts = data.replace('cancel_photo_', '').split('_');
-        const orderId = parts[0];
-        const photoType = parts[1]; // bouquet или delivery
-        
-        // Удаляем ожидание фото
-        const key = `photo_${ADMIN_ID}_${orderId}_${photoType}`;
-        pendingReceipts.delete(key);
-        
-        console.log('❌ Отменено:', key);
-        
-        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
-          callback_query_id: callbackQuery.id,
-          text: '❌ Отменено'
-        });
-        
-        await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`, {
-          chat_id: chatId,
-          message_id: messageId,
-          text: '❌ Отправка фото отменена',
-          parse_mode: 'HTML'
-        });
-      }
 
       // Клиент отправляет чек
       if (data.startsWith('receipt_')) {
@@ -958,7 +421,7 @@ ${topProducts.map((p, i) => `${i + 1}. ${p[0]}: ${p[1].count} шт (${p[1].reven
           
           await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             chat_id: order.telegram_user_id,
-            text: `❌ <b>Чек не принят</b>\n\n📋 Заказ #${orderId}\n\nПожалуйста, отправьте корректный чек.\n\n🇰🇿 <b>Чек қабылданбады</b>\n\nДұрыс чекті жіберіңіз.`,
+            text: `❌ <b>Чек не принят</b>\n\n📋 Заказ #${orderId.slice(-6)}\n\nПожалуйста, отправьте корректный чек.\n\n🇰🇿 <b>Чек қабылданбады</b>\n\nДұрыс чекті жіберіңіз.`,
             parse_mode: 'HTML',
             reply_markup: {
               inline_keyboard: [[
@@ -982,79 +445,11 @@ ${topProducts.map((p, i) => `${i + 1}. ${p[0]}: ${p[1].count} шт (${p[1].reven
       }
     }
 
-    // Обработка фото (чека или от админа для клиента)
+    // Обработка фото (чека)
     if (update.message && update.message.photo) {
       const chatId = update.message.chat.id;
       const photo = update.message.photo[update.message.photo.length - 1];
       
-      // Проверяем - это фото для клиента от админа?
-      if (chatId === ADMIN_ID) {
-        console.log('📸 Админ отправил фото!');
-        console.log('🔑 Ищем ключ в pendingReceipts...');
-        console.log('📋 Все ключи:', Array.from(pendingReceipts.keys()));
-        
-        // Ищем любой ключ photo_ для этого админа
-        let foundKey = null;
-        let photoData = null;
-        
-        for (const [key, value] of pendingReceipts.entries()) {
-          if (key.startsWith('photo_') && key.includes(`photo_${ADMIN_ID}_`)) {
-            foundKey = key;
-            photoData = value;
-            console.log('✅ Нашли ключ:', foundKey);
-            console.log('📦 Данные:', photoData);
-            break; // Берём первый найденный
-          }
-        }
-        
-        if (foundKey && photoData) {
-          const messages = {
-            bouquet: {
-              ru: '💐 <b>Ваш букет готов!</b>\n\n📋 Заказ #' + photoData.orderId + '\n\nБукет уже собран и готов к доставке! 🌸',
-              kk: '💐 <b>Сіздің шоғыңыз дайын!</b>\n\n📋 Тапсырыс #' + photoData.orderId + '\n\nШоқ жиналды және жеткізуге дайын! 🌸'
-            },
-            delivery: {
-              ru: '📦 <b>Букет доставлен!</b>\n\n📋 Заказ #' + photoData.orderId + '\n\nБукет успешно доставлен по адресу! Спасибо за заказ! 🎉',
-              kk: '📦 <b>Шоқ жеткізілді!</b>\n\n📋 Тапсырыс #' + photoData.orderId + '\n\nШоқ мекенжайға сәтті жеткізілді! Тапсырысыңызға рахмет! 🎉'
-            }
-          };
-
-          const message = messages[photoData.photoType] || messages.bouquet;
-          
-          try {
-            // Отправляем фото клиенту
-            await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-              chat_id: photoData.customerId,
-              photo: photo.file_id,
-              caption: message.ru + '\n\n' + message.kk,
-              parse_mode: 'HTML'
-            });
-
-            // Подтверждение админу
-            await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-              chat_id: ADMIN_ID,
-              text: '✅ Фото отправлено клиенту!'
-            });
-
-            pendingReceipts.delete(foundKey);
-            return res.json({ ok: true });
-          } catch (error) {
-            console.error('Ошибка отправки фото клиенту:', error);
-            
-            // Сообщаем админу об ошибке
-            await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-              chat_id: ADMIN_ID,
-              text: '❌ Ошибка отправки фото клиенту!\n\n' + error.message
-            });
-            
-            return res.json({ ok: true });
-          }
-        } else {
-          console.log('❌ Ключ не найден! Админ отправил фото но нет ожидания.');
-        }
-      }
-      
-      // Проверяем - это чек об оплате?
       const orderId = pendingReceipts.get(`waiting_${chatId}`);
       
       if (orderId) {
@@ -1121,47 +516,6 @@ app.post('/api/setup-webhook', async (req, res) => {
   }
 });
 
-// API: Настройка Menu Button вручную
-app.get('/api/setup-menu-button', async (req, res) => {
-  try {
-    // Настройка кнопки для ВСЕХ пользователей (включая админа)
-    console.log(`🔄 Настройка Menu Button для всех пользователей...`);
-    
-    const defaultMenuResponse = await axios.post(
-      `https://api.telegram.org/bot${BOT_TOKEN}/setChatMenuButton`,
-      {
-        menu_button: {
-          type: 'web_app',
-          text: '🌸 Выбрать букет',
-          web_app: { url: CLIENT_APP_URL }
-        }
-      }
-    );
-
-    if (defaultMenuResponse.data.ok) {
-      console.log(`✅ Menu Button настроена для всех: ${CLIENT_APP_URL}`);
-      res.json({
-        success: true,
-        message: 'Menu Button настроена! У всех (включая админа) слева будет "🌸 Выбрать букет"',
-        url: CLIENT_APP_URL,
-        note: 'Админ дополнительно имеет кнопки снизу: Админ-панель, Статистика, Рассылка'
-      });
-    } else {
-      res.status(500).json({
-        error: 'Telegram вернул ошибку',
-        details: defaultMenuResponse.data
-      });
-    }
-
-  } catch (error) {
-    console.error(`❌ Ошибка настройки Menu Button:`, error.message);
-    res.status(500).json({ 
-      error: 'Ошибка настройки Menu Button',
-      details: error.message 
-    });
-  }
-});
-
 // API: Получить конфиг
 app.get('/api/config', (req, res) => {
   res.json({
@@ -1202,22 +556,20 @@ async function setupWebhookOnStartup() {
     
     if (currentWebhook === webhookUrl) {
       console.log(`✅ Webhook уже установлен: ${webhookUrl}`);
-    } else {
-      console.log(`🔄 Установка webhook: ${webhookUrl}...`);
-      const setResponse = await axios.post(
-        `https://api.telegram.org/bot${BOT_TOKEN}/setWebhook`,
-        { url: webhookUrl }
-      );
-      
-      if (setResponse.data.ok) {
-        console.log(`✅ Webhook успешно установлен!`);
-      } else {
-        console.error(`❌ Ошибка установки webhook:`, setResponse.data);
-      }
+      return;
     }
     
-    // Menu Button настраивается вручную через BotFather
-    console.log(`ℹ️  Menu Button настраивается через BotFather или /api/setup-menu-button`);
+    console.log(`🔄 Установка webhook: ${webhookUrl}...`);
+    const setResponse = await axios.post(
+      `https://api.telegram.org/bot${BOT_TOKEN}/setWebhook`,
+      { url: webhookUrl }
+    );
+    
+    if (setResponse.data.ok) {
+      console.log(`✅ Webhook успешно установлен!`);
+    } else {
+      console.error(`❌ Ошибка установки webhook:`, setResponse.data);
+    }
   } catch (error) {
     console.error(`❌ Ошибка при установке webhook:`, error.message);
   }
