@@ -346,8 +346,11 @@
       };
 
       const submitOrder = async () => {
+        console.log('🔵 submitOrder вызван, isSubmitting:', isSubmitting);
+        
         // Защита от двойного клика
         if (isSubmitting) {
+          console.log('⛔ Заблокировано! isSubmitting = true');
           return;
         }
 
@@ -356,7 +359,9 @@
           return;
         }
         
+        console.log('🟢 Начинаем оформление...');
         setIsSubmitting(true); // Блокируем кнопку
+        console.log('🔒 isSubmitting установлен в true');
         
         const name = document.getElementById('customerName')?.value?.trim();
         const phone = document.getElementById('customerPhone')?.value?.replace(/\s/g, '').trim(); // Убираем пробелы
@@ -384,11 +389,15 @@
           const userId = tg?.initDataUnsafe?.user?.id;
           const username = tg?.initDataUnsafe?.user?.username;
           
+          console.log('🛒 Создаём заказ:', { orderId, userId, username });
+          
           const subtotal = getCartSubtotal();
           const cashbackUsed = useCashback ? Math.min(cashbackAmount, customer.cashback_balance, subtotal) : 0;
           const finalTotal = subtotal - cashbackUsed;
           
-          await supabase.from('flowers_orders').insert({
+          console.log('💰 Суммы:', { subtotal, cashbackUsed, finalTotal });
+          
+          const insertResult = await supabase.from('flowers_orders').insert({
             id: orderId,
             telegram_user_id: userId,
             customer_name: name,
@@ -404,6 +413,13 @@
             total: finalTotal,
             status: 'pending'
           });
+          
+          console.log('✅ Заказ создан:', insertResult);
+          
+          if (insertResult.error) {
+            console.error('❌ Ошибка INSERT:', insertResult.error);
+            throw insertResult.error;
+          }
           
           if (cashbackUsed > 0) {
             const newBalance = customer.cashback_balance - cashbackUsed;
@@ -453,14 +469,16 @@
           setUseCashback(false);
           setCashbackAmount(0);
           setIsSubmitting(false); // Разблокируем после успеха
+          console.log('🔓 isSubmitting установлен в false (успех)');
           setView('orders');
           showToast(t.orderSuccess);
           loadData(supabase);
           
         } catch (error) {
-          console.error('Ошибка заказа:', error);
+          console.error('❌ Ошибка заказа:', error);
           showToast(lang === 'kk' ? 'Қате орын алды' : 'Произошла ошибка', 'error');
           setIsSubmitting(false); // Разблокируем после ошибки
+          console.log('🔓 isSubmitting установлен в false (ошибка)');
         }
       };
 
