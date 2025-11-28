@@ -5,11 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Цветочная Лавка</title>
   
+  <!-- Preload критичных ресурсов для быстрой загрузки -->
+  <link rel="preload" as="script" href="https://telegram.org/js/telegram-web-app.js">
+  <link rel="preload" as="script" href="https://unpkg.com/react@18/umd/react.production.min.js">
+  <link rel="preload" as="script" href="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js">
+  
+  <!-- DNS prefetch для внешних ресурсов -->
+  <link rel="dns-prefetch" href="https://unpkg.com">
+  <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+  
+  <!-- Критичные скрипты загружаем сразу -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script defer crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Некритичные скрипты загружаем асинхронно -->
   <script defer src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <style>
@@ -603,6 +616,7 @@
                       src={selectedProduct.image_url} 
                       alt={selectedProduct.name}
                       loading="lazy"
+                      decoding="async"
                       className="w-full h-80 object-cover rounded-2xl mb-4"
                     />
                   ) : (
@@ -749,6 +763,7 @@
                           src={product.image_url} 
                           alt={product.name}
                           loading="lazy"
+                          decoding="async"
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -827,7 +842,13 @@
                       <div className="flex gap-3">
                         <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                           {item.image_url ? (
-                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-lg"/>
+                            <img 
+                              src={item.image_url} 
+                              alt={item.name} 
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-full object-cover rounded-lg"
+                            />
                           ) : (
                             <span className="text-3xl">🌺</span>
                           )}
