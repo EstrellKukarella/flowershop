@@ -5,11 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Админ-панель</title>
   
+  <!-- Preload критичных ресурсов -->
+  <link rel="preload" as="script" href="https://telegram.org/js/telegram-web-app.js">
+  <link rel="preload" as="script" href="https://unpkg.com/react@18/umd/react.production.min.js">
+  <link rel="preload" as="script" href="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js">
+  
+  <!-- DNS prefetch -->
+  <link rel="dns-prefetch" href="https://unpkg.com">
+  <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+  
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script defer crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script defer src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <style>
@@ -410,7 +420,13 @@
                     <div className="flex gap-3">
                       <div className="w-20 h-20 bg-gray-100 rounded-lg flex-shrink-0">
                         {product.image_url ? (
-                          <img src={product.image_url} alt={product.name} className="w-full h-full object-cover rounded-lg"/>
+                          <img 
+                            src={product.image_url} 
+                            alt={product.name} 
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full h-full object-cover rounded-lg"
+                          />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-3xl">🌺</div>
                         )}
